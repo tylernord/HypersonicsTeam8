@@ -15,7 +15,7 @@ tb = 26.53;                                                 %burn time, s
 Ivac = 258.29;                                              %specific impulse, sec
 lambda = 0.8;                                               %propellant mass fraction
 Ae = 0.0773;                                                %nozzle exit area, m^2
-
+A = 7;
 
 for i = 1:length(M)
     for j = 1:length(a)
