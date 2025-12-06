@@ -15,13 +15,12 @@ tb = 26.53;                                                 %burn time, s
 Ivac = 258.29;                                              %specific impulse, sec
 lambda = 0.8;                                               %propellant mass fraction
 Ae = 0.0773;                                                %nozzle exit area, m^2
-A = 7;
 
 for i = 1:length(M)
     for j = 1:length(a)
         v(j,i) = M(i)*a(j);                                 %take over velocity, m/s
         dV_ideal(j,i) = sqrt(v(j,i)^2+2*g*H(j));            %from conservation of energy, neglects drag, steering, and grav losses
-        f = 1;                                              %time at which linear pitching begins, normalized by burn time
+        f = 0;                                              %time at which linear pitching begins, normalized by burn time
         dV_drag(j,i) = dV_ideal(j,i)*0.1;                   %rough assumption for drag losses
         dV_grav(j,i) = g*tb*(f+(1-f)*(2/pi));
         dV_design(j,i) = dV_ideal(j,i)+dV_grav(j,i)+dV_drag(j,i);
