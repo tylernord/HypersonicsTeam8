@@ -2,7 +2,7 @@
 % Project Sounding Rocket Sizing 
 % Tyler Nord
 clear; clc; close all;
-
+%test
 %constants/requirements
 g = 9.81;                                                   %gravitational acceleration, m/s^2
 m_pl = 600;                                                 %payload mass, lbf
