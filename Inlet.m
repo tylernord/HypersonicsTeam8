@@ -21,8 +21,8 @@ hd = 0.1; % [can change this value]
 
 %Constants
 gamma = 1.4; %Assumed
-NormalizedLength = 3.78; %
-TotalLength = 5.7272;
+NormalizedLength = 4; %
+TotalLength = 8;
 NormalizedHeight = 1;
 
 
@@ -97,7 +97,7 @@ for i = 1:length(M0)
     C1_new(i) = (1./(gamma.*M3(i))).*((1 + gamma.*M3(i).^2) - P2_P1_new(i)).*(1 + (gamma - 1)./2.*M3(i).^2).^(-0.5);
     IsoExitMach_new(i) = C1_new(i)./(sqrt(1 - (gamma - 1)./2.*C1_new(i).^2));
     P0ratio(i) = P2_P1_new(i).*((1 + (gamma - 1)./2.*IsoExitMach_new(i).^2)./(1 + (gamma - 1)./2.*M3(i).^2)).^(gamma./(gamma - 1));
-    TotalPressRec(i) = P3_P1(i).*P0ratio(i);
+    TotalPressRec(i) = PressureRecovery(i).*P0ratio(i);
 
 
 
@@ -155,7 +155,7 @@ hold on
 plot(M0(:), PressureRecovery(:))
 xlabel("Flight Mach Number [-]")
 ylabel("Ratios [-]")
-legend("Temp Ratio", "NASA Eqn", "GN/GN")
+legend("Static Press Ratio", "P0 Ratio NASA Eqn", "P0 Ratio GN/GN")
 
 figure(4)
 plot(M0, IsoExitMach_new)
