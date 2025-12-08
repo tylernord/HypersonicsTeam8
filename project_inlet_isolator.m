@@ -6,9 +6,9 @@ clear; clc;
 
 %% Variable Instantiations
     % Inputs
-H = 35*1000;                                                               %cruise altitude, m
+H = 25*1000;                                                               %cruise altitude, m
 M0 = 4.5;                                                                  %cruise Mach number
-% target_Po3 = 16*10^3;                                                    %isolator exit stag. pressure, Pa
+target_Po3 = 137500;                                                       %isolator exit stag. pressure, Pa
 % A0 = ;                                                                   %capture area, m^2
 Isolator_L_margin = 1.25;                                                  %ratio of isolator length to shock train length at cruise
 chosen_theta = 16; %deg
@@ -19,8 +19,8 @@ Re = 20000;
     % Initial calcs
 [T0, a0, P0, rho0, ~, ~] = atmosisa(H, 'extended', true);                  %cruise static conditions, [K, m/s, Pa, kg/m^3, ~, ~]
 Po0 = Po(P0,M0,gamma);                                                     %freestream stagnation pressure, Pa
-% target = target_Po3/Po0;                                                 %stagnation pressure ratio
-target = 0.4;                                                              % [[ Placeholder ]]
+target = target_Po3/Po0;                                                   %stagnation pressure ratio
+% target = 0.4;                                                              % [[ Placeholder ]]
     % Values used by solver
 N_theta = 500;
 N_iso = 500;
