@@ -158,7 +158,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
         fprintf("\nNow starting Release to Cruise Sim:\n");
 
         dt_sep = 1; % Time step for R2C sim
-        t_accel = 20; % Total acceleration time to cruise, s
+        t_accel = 30; % Total acceleration time to cruise, s
         dVx = (V_cruise - V_release)/t_accel; % Acceleration of ramjet, m/s^2
         %V_profile = accel_profile(V_sep,V_cruise,t_accel,dt_sep);
         %V_profile = V_release:(V_cruise-V_release)/(t_accel/dt_sep):V_cruise;
@@ -206,10 +206,18 @@ for i = 1:1 % Performs computations for range of Mach numbers
             else
                 Cd = Cd2;
             end
+
+            disp(t);
+            if t == 0
+                pitch = 0;
+            else
+                pitch = alpha - alpha_vec(end);
+            end
+
             lift = q_R2C*S*Cl_R2C; % Lift force generated, N (should counter weight)
             drag = q_R2C*S*Cd; % Drag force generated, N
-            thrust = (curr_m*dVx + drag)/cosd(theta + engineOffset); % Thrust force needed to accelerate, N
-            incidence_vec(end+1) = theta + engineOffset; % Incidence angle for engine, deg.
+            thrust = (curr_m*dVx + drag)/cosd(pitch + theta + engineOffset); % Thrust force needed to accelerate, N
+            incidence_vec(end+1) = pitch + theta + engineOffset; % Incidence angle for engine, deg.
 
             % Station Properties/Cycle Analysis
             mdot_air = rho*A_cap*Vx_vec(end); % Engine air mdot, kg/s
@@ -251,7 +259,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             T04_vec(end+1) = T04_design;
             phi_vec(end+1) = stoich_JETA/(1/f);
             SFC_vec(end+1) = (mdot_fuel*3600)/thrust;
-            az_vec(end+1) = (lift+thrust*sind(theta + engineOffset)-curr_m*g)/curr_m; % Changing AoA to keep flight level
+            az_vec(end+1) = (lift+thrust*sind(pitch + theta + engineOffset)-curr_m*g)/curr_m; % Changing AoA to keep flight level
             Vz_vec(end+1) = Vz_vec(end) + az_vec(end)*dt_sep;
             alt_vec(end+1) = alt + Vz_vec(end)*dt_sep;
             LD_vec(end+1) = lift/drag;
@@ -316,13 +324,13 @@ for i = 1:1 % Performs computations for range of Mach numbers
             if Vz == 0
                 Cl_cruise = 0.08; % Lift coefficient per NASA documents
             elseif Vz < 0 && incidence_vec(end) < 0
-                Cl_cruise = Cl_cruise + 0.015;
+                Cl_cruise = Cl_cruise + 0.01;
             elseif Vz > 0 && incidence_vec(end) > 0
-                Cl_cruise = Cl_cruise - 0.015;
+                Cl_cruise = Cl_cruise - 0.005;
             elseif Vz < 0 && incidence_vec(end) > 0
                 Cl_cruise = Cl_cruise + 0.005;
             elseif Vz > 0 && incidence_vec(end) < 0
-                Cl_cruise = Cl_cruise - 0.005;
+                Cl_cruise = Cl_cruise - 0.01;
             end
             [Cd2,alpha,~] = NASA_coeff(M0,beta(M0),Cl_cruise,AspectRatio,0);
             if Cd1 > Cd2 % Choose larger drag coefficient for R2C phase
@@ -330,10 +338,18 @@ for i = 1:1 % Performs computations for range of Mach numbers
             else
                 Cd = Cd2;
             end
+
+            disp(t);
+            if t == 0
+                pitch = 0;
+            else
+                pitch = alpha - alpha_vec(end);
+            end
+
             lift = q_cruise*S*Cl_cruise;
             drag = q_cruise*S*Cd;
-            thrust = drag/cosd(theta + engineOffset);
-            incidence_vec(end+1) = theta + engineOffset; % Incidence angle for engine, deg.
+            thrust = drag/cosd(pitch + theta + engineOffset);
+            incidence_vec(end+1) = pitch + theta + engineOffset; % Incidence angle for engine, deg.
             disp(incidence_vec(end));
 
             % Station Properties/Cycle Analysis
@@ -373,7 +389,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             T04_vec(end+1) = T04_design;
             phi_vec(end+1) = stoich_JETA/(1/f);
             SFC_vec(end+1) = (mdot_fuel*3600)/thrust;
-            az_vec(end+1) = (lift+thrust*sind(theta + engineOffset)-curr_m*g)/curr_m; 
+            az_vec(end+1) = (lift+thrust*sind(pitch + theta + engineOffset)-curr_m*g)/curr_m; 
             Vz_vec(end+1) = Vz_vec(end) + az_vec(end)*dt;
             alt_vec(end+1) = alt + Vz_vec(end)*dt;
             Vx_vec(end+1) = V_cruise;
