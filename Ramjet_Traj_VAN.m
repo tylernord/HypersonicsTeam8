@@ -78,7 +78,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
         A_cap_frac = 0.50; % Inlet area/Wetted area
         A_cap = S*A_cap_frac; % Capture area for engine
         AspectRatio = 1.5; % Aerodynamic aspect ratio of vehicle design
-        engineOffset = 0.0; % Aeroydnamic offset of engine, degress
+        engine_offset = 0.0; % Aeroydnamic offset of engine, degrees
 
         % Trajectory properties --> Update these!!!
         sep_type = "constant alt"; % Trajectory type between sep. and cruise start
@@ -93,9 +93,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
         % Maybe some type of convergence study
         % Currently using f value and inlet mdot_air assumptions
 
-        % P0_recov = 0.80; % Conservative value for inlet pressure recovery, %
-        % T04_max = 1800; % Maximum combustor stagnation temperature, K --> Update this based on lit review!!!
-        T04_design = 1700; % Design combustor exit stagnation temperature, K during accel. (Ramjet mode?)
+        T04_design = 1600; % Design combustor exit stagnation temperature, K during accel. (Ramjet mode?)
         AR_45 = 1.25; % Area ratio between combustor and nozzle throat --> Edit this parameter!
         n_b = 0.95; % Combustion efficiency
         n_n = 0.98; % Nozzle efficiency
@@ -152,6 +150,10 @@ for i = 1:1 % Performs computations for range of Mach numbers
         M3_vec = []; % Mach number at combustor inlet
         M4_vec = []; % Mach number at combustor outlet
         M_exit_vec = []; % Mach number at engine exit
+        tot_AR_vec = []; % Area ratio from nozzle exit to combustor inlet
+        zeta_vec = []; % Body angle vector, deg.
+        phi_c_vec = []; % Static temperature ratio across inlet
+        eta_c_vec = []; % Compressive efficiency for inlet
 
         %% Simulating Ramjet Release to Cruise (R2C)
 
@@ -168,8 +170,10 @@ for i = 1:1 % Performs computations for range of Mach numbers
             % Current properties
             Vx = Vx_vec(end);
             Vz = Vz_vec(end);
+            tot_V = (Vx^2 + Vz^2)^0.5;
             t = t_vec(end);
             alt = alt_vec(end);
+            %zeta = zeta_vec(end); % Body orientation angle relative to x
 
             fprintf("\nCurrently assessing time step %0.f", t);
 
@@ -180,7 +184,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             rho = props(4);
 
             % Flight parameters
-            q_R2C = 0.5*rho*Vx^2; % Dynamic pressure at separation
+            q_R2C = 0.5*rho*tot_V^2; % Dynamic pressure at separation
             M_R2C = Vx/a; % Mach number
             theta_vec(end+1) = atand(Vz/Vx); theta = theta_vec(end); % Vehicle flight path angle
 
@@ -190,7 +194,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             % Lift, Drag, and Thrust Analysis
             Cd1 = Cd_mach(M_R2C); % Based on class given correlations
             if Vz == 0
-                Cl_R2C = 0.08; % Lift coefficient per NASA documents
+                Cl_R2C = 0.12; % Lift coefficient per NASA documents
             elseif Vz < 0 && incidence_vec(end) < 0
                 Cl_R2C = Cl_R2C + 0.015;
             elseif Vz > 0 && incidence_vec(end) > 0
@@ -207,20 +211,20 @@ for i = 1:1 % Performs computations for range of Mach numbers
                 Cd = Cd2;
             end
 
-            disp(t);
             if t == 0
-                pitch = 0;
-            else
-                pitch = alpha - alpha_vec(end);
+               engine_offset = 0;
+               wing_offset = alpha;
+               % engine_offset = alpha;
             end
+            zeta_vec(end+1) = alpha + theta - wing_offset; zeta = zeta_vec(end); % Body angle
 
             lift = q_R2C*S*Cl_R2C; % Lift force generated, N (should counter weight)
             drag = q_R2C*S*Cd; % Drag force generated, N
-            thrust = (curr_m*dVx + drag)/cosd(pitch + theta + engineOffset); % Thrust force needed to accelerate, N
-            incidence_vec(end+1) = pitch + theta + engineOffset; % Incidence angle for engine, deg.
+            thrust = (curr_m*dVx + lift*sind(alpha+theta) + drag*cosd(alpha+theta))/(cosd(zeta-engine_offset)); % Thrust force needed to accelerate, N
+            incidence_vec(end+1) = zeta-theta-engine_offset; % Incidence angle for engine, deg.
 
             % Station Properties/Cycle Analysis
-            mdot_air = rho*A_cap*Vx_vec(end); % Engine air mdot, kg/s
+            mdot_air = rho*A_cap*tot_V; % Engine air mdot, kg/s
 
             P00 = P0*(1+(gamma-1)/2 * M_R2C^2)^(gamma/(gamma-1)); % Inlet stag. pressure
             T00 = T0*(1+(gamma-1)/2 * M_R2C^2); % Inlet stagnation temp.
@@ -230,15 +234,18 @@ for i = 1:1 % Performs computations for range of Mach numbers
 
             P_exit = P0; % Perfect expansion
 
-            V_exit = (thrust + mdot_air*V_cruise)/mdot_air; % Ideal ramjet thrust analysis
-            P04 = fzero(@(P04) V_exit - (2 * cp_hot * 1800 * n_n * (1 - (P_exit/P04)^((gamma_hot-1)/gamma_hot)))^0.5, P00*0.5);
+            V_exit = (thrust + mdot_air*Vx)/mdot_air; % Ideal ramjet thrust analysis
+            P04 = fzero(@(P04) V_exit - (2 * cp_hot * T04_design * n_n * (1 - (P_exit/P04)^((gamma_hot-1)/gamma_hot)))^0.5, P00*0.5);
             M_exit = (P04/P_exit)^((gamma_hot - 1)/gamma_hot); % Engine exit mach number
             AR_vec(end+1) = 1/M_exit * (((gamma_hot+1)/2)/(1+(gamma_hot-1)/2 * M_exit^2))^((gamma_hot+1)/(2 - 2*gamma_hot)); % Area ratio for nozzle exit
             
-            D5 = D_func(1,gamma_hot); D_exit = D_func(M_exit,gamma_hot); AR = D5/D_exit; % Area ratio of nozzle
-            M4 = fzero(@(M) D_func(1,gamma_hot) - AR_45*D_func(M,gamma_hot),1/M0); % Mach number at combustor outlet, subsonic
-            M3 = fzero(@(M) sqrt(T04_design/T03) - N_func(M4,gamma_hot)/N_func(M,gamma_hot), 1/M0); % Mach number at combustor inlet, subsonic
-            P03 = fzero(@(P03) P04*G_func(M4,gamma_hot) - P03*G_func(M3,gamma_hot), P00*0.7); % Stagnation ressure at combustor inlet
+            M4 = 0.8; % Design mach number, combustor exit
+            [M3,P3,P03,P04,~,AR_exit,comb_AR,total_AR] = CP_Ramjet_Analysis(mdot_air,thrust,P_exit,T03,T04_design,M4,gamma_hot,cp_hot,Vx);
+
+            %D5 = D_func(1,gamma_hot); D_exit = D_func(M_exit,gamma_hot); AR = D5/D_exit; % Area ratio of nozzle
+            %M4 = fzero(@(M) D_func(1,gamma_hot) - AR_45*D_func(M,gamma_hot),1/M0); % Mach number at combustor outlet, subsonic
+            %M3 = fzero(@(M) sqrt(T04_design/T03) - N_func(M4,gamma_hot)/N_func(M,gamma_hot), 1/M0); % Mach number at combustor inlet, subsonic
+            %P03 = fzero(@(P03) P04*G_func(M4,gamma_hot) - P03*G_func(M3,gamma_hot), P00*0.7); % Stagnation ressure at combustor inlet
             T3 = T03/(1+(gamma-1)/2 * M3^2); % Static temperature at combustor inlet
 
             if size(f_vec,2) < 1
@@ -259,7 +266,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             T04_vec(end+1) = T04_design;
             phi_vec(end+1) = stoich_JETA/(1/f);
             SFC_vec(end+1) = (mdot_fuel*3600)/thrust;
-            az_vec(end+1) = (lift+thrust*sind(pitch + theta + engineOffset)-curr_m*g)/curr_m; % Changing AoA to keep flight level
+            az_vec(end+1) = (lift*cosd(theta+alpha) + thrust*sind(zeta - engine_offset) - drag*sind(alpha+theta) - curr_m*g)/curr_m; % Changing AoA to keep flight level
             Vz_vec(end+1) = Vz_vec(end) + az_vec(end)*dt_sep;
             alt_vec(end+1) = alt + Vz_vec(end)*dt_sep;
             LD_vec(end+1) = lift/drag;
@@ -272,11 +279,19 @@ for i = 1:1 % Performs computations for range of Mach numbers
             M3_vec(end+1) = M3;
             M4_vec(end+1) = M4;
             M_exit_vec(end+1) = M_exit;
+            tot_AR_vec(end+1) = total_AR;
+
+            phi_c_vec(end+1) = T3/T0; phi_c = phi_c_vec(end);
+            eta_c_vec(end+1) = (phi_c - (P00/P03)^(gamma-1)/gamma)/(phi_c-1);
 
             curr_m = curr_m - dt_sep*mdot_fuel; % Update vehicle mass, kg
             mass_vec(end+1) = curr_m;
             t_vec(end+1) = t_vec(end) + dt_sep;
-            disp(alt);
+            
+            % disp(V_cruise);
+            % disp(mdot_air);
+            % disp(V_exit);
+            % disp(P04);
 
         end
 
@@ -290,6 +305,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
         t_cruise_end = range/V_cruise;
         dt = 1; % Time step for cruise sim, s.
         Cl_cruise = Cl_R2C;
+        wing_offset = 2.0;
         % dt = round(t_cruise_end/100); % Useful dt for long cruise sim.
 
         % % Cruise aerodynamics
@@ -308,6 +324,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             fprintf("\nCurrent sim time is: %0.f seconds", t);
             alt = alt_vec(end);
             Vz = Vz_vec(end);
+            tot_V = (Vx^2 + Vz^2)^0.5;
 
             % Atmospheric properties
             props = air_prop(alt);
@@ -316,13 +333,15 @@ for i = 1:1 % Performs computations for range of Mach numbers
             P0 = props(3);
             rho = props(4);
             V_cruise = M0*a;
-            q_cruise = 0.5*rho*V_cruise^2; % Cruise dynamic pressure
+            q_cruise = 0.5*rho*tot_V^2; % Cruise dynamic pressure
             theta_vec(end+1) = atand(Vz/V_cruise); theta = theta_vec(end); % Vehicle flight path angle
             
             % Lift, Drag, and Thrust Analysis
             Cd1 = Cd_mach(M_R2C); % Based on class given correlations
+            
+            Cl_cruise = 1.07*(curr_m*g)/(S*q_cruise);
             if Vz == 0
-                Cl_cruise = 0.08; % Lift coefficient per NASA documents
+                Cl_cruise = 0.08; % Lift coefficient per NASA document
             elseif Vz < 0 && incidence_vec(end) < 0
                 Cl_cruise = Cl_cruise + 0.01;
             elseif Vz > 0 && incidence_vec(end) > 0
@@ -338,22 +357,16 @@ for i = 1:1 % Performs computations for range of Mach numbers
             else
                 Cd = Cd2;
             end
-
-            disp(t);
-            if t == 0
-                pitch = 0;
-            else
-                pitch = alpha - alpha_vec(end);
-            end
+            zeta_vec(end+1) = alpha + theta - wing_offset; zeta = zeta_vec(end); % Body angle
 
             lift = q_cruise*S*Cl_cruise;
             drag = q_cruise*S*Cd;
-            thrust = drag/cosd(pitch + theta + engineOffset);
-            incidence_vec(end+1) = pitch + theta + engineOffset; % Incidence angle for engine, deg.
+            thrust = (lift*sind(alpha+theta) + drag*cosd(alpha+theta))/(cosd(zeta-engine_offset));
+            incidence_vec(end+1) = zeta-theta-engine_offset; % Incidence angle for engine, deg.
             disp(incidence_vec(end));
 
             % Station Properties/Cycle Analysis
-            mdot_air = rho*A_cap*Vx_vec(end); % Engine air mdot, kg/s
+            mdot_air = rho*A_cap*tot_V; % Engine air mdot, kg/s
 
             P00 = P0*(1+(gamma-1)/2 * M_R2C^2)^(gamma/(gamma-1)); % Inlet stag. pressure
             T00 = T0*(1+(gamma-1)/2 * M_R2C^2); % Inlet stagnation temp.
@@ -363,15 +376,18 @@ for i = 1:1 % Performs computations for range of Mach numbers
 
             P_exit = P0; % Perfect expansion
 
-            V_exit = (thrust + mdot_air*V_cruise)/mdot_air; % Ideal ramjet thrust analysis
-            P04 = fzero(@(P04) V_exit - (2 * cp_hot * 1800 * n_n * (1 - (P_exit/P04)^((gamma_hot-1)/gamma_hot)))^0.5, P00*0.5);
+            V_exit = (thrust + mdot_air*Vx)/mdot_air; % Ideal ramjet thrust analysis
+            P04 = fzero(@(P04) V_exit - (2 * cp_hot * T04_design * n_n * (1 - (P_exit/P04)^((gamma_hot-1)/gamma_hot)))^0.5, P00*0.5);
             M_exit = (P04/P_exit)^((gamma_hot - 1)/gamma_hot); % Engine exit mach number
             AR_vec(end+1) = 1/M_exit * (((gamma_hot+1)/2)/(1+(gamma_hot-1)/2 * M_exit^2))^((gamma_hot+1)/(2 - 2*gamma_hot)); % Area ratio for nozzle exit
             
-            D5 = D_func(1,gamma_hot); D_exit = D_func(M_exit,gamma_hot); AR = D5/D_exit; % Area ratio of nozzle
-            M4 = fzero(@(M) D_func(1,gamma_hot) - AR_45*D_func(M,gamma_hot),1/M0); % Mach number at combustor outlet, subsonic
-            M3 = fzero(@(M) sqrt(T04_design/T03) - N_func(M4,gamma_hot)/N_func(M,gamma_hot), 1/M0); % Mach number at combustor inlet, subsonic
-            P03 = fzero(@(P03) P04*G_func(M4,gamma_hot) - P03*G_func(M3,gamma_hot), P00*0.7); % Stagnation ressure at combustor inlet
+            M4 = 0.8; % Design mach number, combustor exit
+            [M3,P3,P03,P04,~,AR_exit,comb_AR,total_AR] = CP_Ramjet_Analysis(mdot_air,thrust,P_exit,T03,T04_design,M4,gamma_hot,cp_hot,Vx);
+
+            % D5 = D_func(1,gamma_hot); D_exit = D_func(M_exit,gamma_hot); AR = D5/D_exit; % Area ratio of nozzle
+            % M4 = fzero(@(M) D_func(1,gamma_hot) - AR_45*D_func(M,gamma_hot),1/M0); % Mach number at combustor outlet, subsonic
+            % M3 = fzero(@(M) sqrt(T04_design/T03) - N_func(M4,gamma_hot)/N_func(M,gamma_hot), 1/M0); % Mach number at combustor inlet, subsonic
+            % P03 = fzero(@(P03) P04*G_func(M4,gamma_hot) - P03*G_func(M3,gamma_hot), P00*0.7); % Stagnation ressure at combustor inlet
             T3 = T03/(1+(gamma-1)/2 * M3^2); % Static temperature at combustor inlet
 
             f_guess = f_vec(end)*n_b;
@@ -389,7 +405,7 @@ for i = 1:1 % Performs computations for range of Mach numbers
             T04_vec(end+1) = T04_design;
             phi_vec(end+1) = stoich_JETA/(1/f);
             SFC_vec(end+1) = (mdot_fuel*3600)/thrust;
-            az_vec(end+1) = (lift+thrust*sind(pitch + theta + engineOffset)-curr_m*g)/curr_m; 
+            az_vec(end+1) = (lift*cosd(theta+alpha) + thrust*sind(zeta - engine_offset) - drag*sind(alpha+theta) - curr_m*g)/curr_m; % Changing AoA to keep flight level
             Vz_vec(end+1) = Vz_vec(end) + az_vec(end)*dt;
             alt_vec(end+1) = alt + Vz_vec(end)*dt;
             Vx_vec(end+1) = V_cruise;
@@ -404,9 +420,13 @@ for i = 1:1 % Performs computations for range of Mach numbers
             M4_vec(end+1) = M4;
             M_exit_vec(end+1) = M_exit;
 
+            phi_c_vec(end+1) = T3/T0; phi_c = phi_c_vec(end);
+            eta_c_vec(end+1) = (phi_c - (P00/P03)^(gamma-1)/gamma)/(phi_c-1);
+
             curr_m = curr_m - dt*mdot_fuel; % Update vehicle mass, kg
             mass_vec(end+1) = curr_m;
             t_vec(end+1) = t_vec(end) + dt;
+
 
         end
 
@@ -490,8 +510,8 @@ for i = 1:1 % Performs computations for range of Mach numbers
         figure(1001);
         plot(t_vec(2:end)./60,P03_vec./P00_vec);
         xlabel("Time [min]");
-        ylabel("Inlet Compressive Efficiency");
-        title("Required \eta_c vs. Time");
+        ylabel("Pressure Recovery across Inlet, P_{03}/P_{00}");
+        title("Required Pressure Recovery for Inlet vs. Time");
         grid on;
 
         figure(1002);
@@ -535,7 +555,34 @@ for i = 1:1 % Performs computations for range of Mach numbers
         ylabel("Combustor Exit Mach Number");
         title("Combustor Exit Mach Number vs. Time");
         grid on;
+         
+        figure(1008);
+        plot(t_vec(2:end)./60,P03_vec./1000);
+        xlabel("Time [min]");
+        ylabel("Combustor Inlet Stagnation Pressure [kPa]");
+        title("P03 vs. Time");
+        grid on;
 
+        figure(1009);
+        plot(t_vec(2:end)./60,P04_vec./1000);
+        xlabel("Time [min]");
+        ylabel("Combustor Exit Stagnation Pressure [kPa]");
+        title("P04 vs. Time");
+        grid on;
+
+        figure(1010);
+        plot(t_vec(2:end)./60,eta_c_vec);
+        xlabel("Time [min]");
+        ylabel("\eta_c");
+        title("Inlet Compressive Efficiency vs. Time");
+        grid on;
+
+        figure(1011);
+        plot(t_vec(2:end)./60,phi_c_vec);
+        xlabel("Time [min]");
+        ylabel("\phi_c");
+        title("Inlet Static Temperature Ratio vs. Time");
+        grid on;
 
     end
 end
@@ -716,10 +763,10 @@ while abs(T04_calc - T04)/T04 > 0.01
     else
         f_low = f_guess;
     end
-
+    % 
     % fprintf("\n    f = %f\n", f_guess);
-    % fprintf("\n    f_high = %f\n", f_guess_high);
-    % fprintf("\n    f_low = %f\n", f_guess_low);
+    % fprintf("\n    f_high = %f\n", f_high);
+    % fprintf("\n    f_low = %f\n", f_low);
     % fprintf("\n  T04_calc = %f\n", T04_calc);
 
     counter = counter + 1;
@@ -750,7 +797,7 @@ else
 end
 
 % Computes either alpha or lift coefficient based on given info
-CL_0 = 0.02; % Lift coefficient at zero angle of attack
+CL_0 = 0.005; % Lift coefficient at zero angle of attack
 if C_lift ~= 0
     alpha = rad2deg(fzero(@(alpha) C_lift - c1*sin(alpha) - c2*(sin(alpha))^2 - CL_0, deg2rad(5)));
 else
