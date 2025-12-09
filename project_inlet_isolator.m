@@ -8,10 +8,9 @@ clear; clc;
     % Inputs
 H = 25*1000;                                                               %cruise altitude, m
 M0 = 4.5;                                                                  %cruise Mach number
-target_Po3 = 137500;                                                       %isolator exit stag. pressure, Pa
+% target_Po3 = 250000;                                                       %isolator exit stag. pressure, Pa
 % A0 = ;                                                                   %capture area, m^2
 Isolator_L_margin = 1.25;                                                  %ratio of isolator length to shock train length at cruise
-chosen_theta = 16; %deg
     % Assumed constants
 gamma = 1.4;
 theta_H = 0.04; %boundary layer momentum thickness to duct height ratio 
@@ -19,8 +18,8 @@ Re = 20000;
     % Initial calcs
 [T0, a0, P0, rho0, ~, ~] = atmosisa(H, 'extended', true);                  %cruise static conditions, [K, m/s, Pa, kg/m^3, ~, ~]
 Po0 = Po(P0,M0,gamma);                                                     %freestream stagnation pressure, Pa
-target = target_Po3/Po0;                                                   %stagnation pressure ratio
-% target = 0.4;                                                              % [[ Placeholder ]]
+% target = target_Po3/Po0;                                                   %stagnation pressure ratio
+targets = [0.35, 0.4, 0.45, 0.5];                                                              % [[ Placeholder ]]
     % Values used by solver
 N_theta = 500;
 N_iso = 500;
@@ -37,6 +36,8 @@ Po3_Po0       = NaN(size(thetas));
 P3            = NaN(size(thetas));
 Po4_Po3_req   = NaN(size(thetas));
 Po4_Po3_min   = NaN(size(thetas));
+Po4_Po3_max   = NaN(size(thetas));
+CompEff       = NaN(size(thetas));
 P4_P3_max     = NaN(size(thetas));
 P4_P3         = NaN(length(thetas), N_iso);
 M4            = NaN(length(thetas), N_iso);
@@ -45,142 +46,162 @@ Po3           = NaN(length(thetas), N_iso);
 Po4           = NaN(length(thetas), N_iso);
 Po4_Po3       = NaN(length(thetas), N_iso);
 Po4_Po0       = NaN(length(thetas), N_iso);
-k             = NaN(size(thetas));
-L_H           = NaN(size(thetas));
-M4_opt        = NaN(size(thetas));
-P4_opt        = NaN(size(thetas));
-Po3_opt       = NaN(size(thetas));
-Po4_opt       = NaN(size(thetas));
-Po4_Po3_opt   = NaN(size(thetas));
-Po4_Po0_opt   = NaN(size(thetas));
-Po4_Po3_max   = NaN(size(thetas));
-CompEff       = NaN(size(thetas));
+k             = NaN(length(targets),length(thetas));
+L_H           = NaN(length(targets),length(thetas));
+M4_opt        = NaN(length(targets),length(thetas));
+P4_opt        = NaN(length(targets),length(thetas));
+Po3_opt       = NaN(length(targets),length(thetas));
+Po4_opt       = NaN(length(targets),length(thetas));
+Po4_Po3_opt   = NaN(length(targets),length(thetas));
+Po4_Po0_opt   = NaN(length(targets),length(thetas));
+
 
 %% Solver
-for j = 1:length(thetas)
-    theta = thetas(j);
-
-% ---------- Shock 1 (oblique) ----------
-    b1 = ShockAngle(theta, M1, gamma);
-    if ~isfinite(b1), continue; end
-    beta1(j) = b1;
-
-    M1n = M1*sin(b1);                              % upstream normal Mach to shock 1
-    [T2_T1, p2_p1] = ShockRatios(M1n, gamma);      % canonical normal-shock T & p ratios
-
-    % Reconstruct full M2 from downstream normal component
-    M2n   = ShockM2n(M1n, gamma);                  % downstream normal Mach
-    M2(j) = M2n / sin(b1 - theta);                 % full downstream Mach after shock 1
-    if ~isfinite(M2(j)) || M2(j) <= 1, continue; end
-
-    % Stagnation pressure ratio across shock 1 (use FULL M1 & M2)
-    Po2_Po1 = PoRatioFromFullM(p2_p1, M1, M2(j), gamma);
-
-% ---------- Shock 2 (oblique) ----------
-    b2 = ShockAngle(theta, M2(j), gamma);
-    if ~isfinite(b2), continue; end
-    beta2(j) = b2;
-
-    M2n_p = M2(j)*sin(b2);                         % upstream normal Mach to shock 2
-    [T3_T2, p3_p2] = ShockRatios(M2n_p, gamma);
-
-    % Static temperature ratio relative to freestream static:
-    T3_T0(j) = T2_T1 * T3_T2;
-
-    % Reconstruct full M3 and stagnation ratio across shock 2
-    M3n   = ShockM2n(M2n_p, gamma);
-    M3(j) = M3n / sin(b2 - theta);
-    if ~isfinite(M3(j)), continue; end
-    if M3(j) < 1
-        fprintf('\nInlet brings flow subsonic at or above Theta = %.0f degrees\n', thetas_deg(j))
-        break;
+for i = 1:length(targets)
+    target = targets(i);
+    for j = 1:length(thetas)
+        theta = thetas(j);
+    
+    % ---------- Shock 1 (oblique) ----------
+        b1 = ShockAngle(theta, M1, gamma);
+        if ~isfinite(b1), continue; end
+        beta1(j) = b1;
+    
+        M1n = M1*sin(b1);                              % upstream normal Mach to shock 1
+        [T2_T1, p2_p1] = ShockRatios(M1n, gamma);      % canonical normal-shock T & p ratios
+    
+        % Reconstruct full M2 from downstream normal component
+        M2n   = ShockM2n(M1n, gamma);                  % downstream normal Mach
+        M2(j) = M2n / sin(b1 - theta);                 % full downstream Mach after shock 1
+        if ~isfinite(M2(j)) || M2(j) <= 1, continue; end
+    
+        % Stagnation pressure ratio across shock 1 (use FULL M1 & M2)
+        Po2_Po1 = PoRatioFromFullM(p2_p1, M1, M2(j), gamma);
+    
+    % ---------- Shock 2 (oblique) ----------
+        b2 = ShockAngle(theta, M2(j), gamma);
+        if ~isfinite(b2), continue; end
+        beta2(j) = b2;
+    
+        M2n_p = M2(j)*sin(b2);                         % upstream normal Mach to shock 2
+        [T3_T2, p3_p2] = ShockRatios(M2n_p, gamma);
+    
+        % Static temperature ratio relative to freestream static:
+        T3_T0(j) = T2_T1 * T3_T2;
+    
+        % Reconstruct full M3 and stagnation ratio across shock 2
+        M3n   = ShockM2n(M2n_p, gamma);
+        M3(j) = M3n / sin(b2 - theta);
+        if ~isfinite(M3(j)), continue; end
+        if M3(j) < 1
+            fprintf('\nInlet brings flow subsonic at or above Theta = %.0f degrees\n', thetas_deg(j))
+            j_break = j;
+            break;
+        end
+    
+        Po3_Po2 = PoRatioFromFullM(p3_p2, M2(j), M3(j), gamma);
+        % Accumulate total-loss across both shocks
+        Po3_Po0(j) = Po2_Po1 * Po3_Po2;
+        P3(j) = p3_p2*p2_p1*P0;
+        CompEff(j) = (T3_T0(j)-(1/Po3_Po0(j))^((gamma-1)/gamma))/(T3_T0(j)-1);
+      
+    % ------------- Isolator -------------
+        % required stagnation pressure ratio across isolator
+        Po4_Po3_req(i,j) = target / Po3_Po0(j);
+        
+        % isolator Po limits
+        Po4_Po3_min(j) = PoShock(M3(j), gamma);   % normal-shock case (most loss)
+        Po4_Po3_max(j) = 1.0;                     % isentropic (no loss) upper bound
+        
+        % static pressure ratio limit for normal shock (same as before)
+        P4_P3_max(j)   = PShock(M3(j), gamma);
+        
+        % feasibility check: can the isolator actually hit this target?
+        if Po4_Po3_req(i,j) < Po4_Po3_min(j) || Po4_Po3_req(i,j) > Po4_Po3_max(j)
+            fprintf(['\nTarget Po4/Po0 = %.3f is infeasible at Theta = %.2f deg ', ...
+                     '(required Po4/Po3 = %.3f, allowed [%.3f, %.3f])\n'], ...
+                     target, thetas_deg(j), Po4_Po3_req(i,j), Po4_Po3_min(j), Po4_Po3_max(j));
+        
+            % mark this theta as infeasible and skip isolator sizing
+            k(i,j)           = NaN;
+            M4_opt(i,j)      = NaN;
+            P4_opt(i,j)      = NaN;
+            Po4_opt(i,j)     = NaN;
+            Po4_Po3_opt(i,j) = NaN;
+            Po4_Po0_opt(i,j) = NaN;
+            L_H(i,j)         = NaN;
+            continue;
+        end
+    
+        %possible pressure ratios from a shock train (this is my variable for the design space)
+        P4_P3(j,:) = linspace(1.01, P4_P3_max(j), N_iso);
+        %compute the mach number at the exit
+        gm1 = gamma-1;
+            %use formula from Lec 11 slide 23
+        f = @(M4,P4_P3) (1./P4_P3).*(M3(j)./M4).*sqrt((1+gm1/2*M3(j).^2)./(1+gm1/2*M4.^2)) ...
+                        - (((1+gamma*M3(j).^2)./P4_P3)-1)./(gamma*M4.^2);
+        M4(j,:) = arrayfun(@(p) fsolve(@(M4) f(M4,p), 0.2, ...
+                         optimoptions('fsolve','Display','off')), P4_P3(j,:));
+        %compute stagnation pressure loss across isolator
+        P4(j,:) = P3(j).*P4_P3(j,:);
+        Po3(j,:) = Po(P3(j),M3(j),gamma);
+        Po4(j,:) = Po(P4(j,:),M4(j,:),gamma);
+        Po4_Po3(j,:) = Po4(j,:)./Po3(j,:);
+        Po4_Po0(j,:) = Po4_Po3(j,:).*Po3_Po0(j);
+        %find index k such that Po4_Po3(j,k) = Po4_Po3_req(j)
+        [~, k(i,j)] = min(abs(Po4_Po3(j,:) - Po4_Po3_req(i,j)));   % closest match
+        %compute shock train length via correlation in Waltrup & Billing
+        L_H(i,j) = Isolator_L_margin.*sqrt(theta_H).*(50.*(P4_P3(j,k(i,j))-1)+170.* ...
+            (P4_P3(j,k(i,j))-1).^2)./((M3(j)^2-1).*Re^0.25);
+        %collect post isolator values for optimal Po ratio case at each theta
+        M4_opt(i,j) = M4(j,k(i,j));
+        P4_opt(i,j) = P4(j,k(i,j));
+        Po3_opt(i,j) = Po3(j,k(i,j));
+        Po4_opt(i,j) = Po4(j,k(i,j));
+        Po4_Po3_opt(i,j) = Po4_Po3(j,k(i,j));
+        Po4_Po0_opt(i,j) = Po4_Po0(j,k(i,j));
     end
-
-    Po3_Po2 = PoRatioFromFullM(p3_p2, M2(j), M3(j), gamma);
-    % Accumulate total-loss across both shocks
-    Po3_Po0(j) = Po2_Po1 * Po3_Po2;
-    P3(j) = p3_p2*p2_p1*P0;
-    CompEff(j) = (T3_T0(j)-(1/Po3_Po0(j))^((gamma-1)/gamma))/(T3_T0(j)-1);
-  
-% ------------- Isolator -------------
-    % required stagnation pressure ratio across isolator
-    Po4_Po3_req(j) = target / Po3_Po0(j);
-    
-    % isolator Po limits
-    Po4_Po3_min(j) = PoShock(M3(j), gamma);   % normal-shock case (most loss)
-    Po4_Po3_max(j) = 1.0;                     % isentropic (no loss) upper bound
-    
-    % static pressure ratio limit for normal shock (same as before)
-    P4_P3_max(j)   = PShock(M3(j), gamma);
-    
-    % feasibility check: can the isolator actually hit this target?
-    if Po4_Po3_req(j) < Po4_Po3_min(j) || Po4_Po3_req(j) > Po4_Po3_max(j)
-        fprintf(['\nTarget Po4/Po0 = %.3f is infeasible at Theta = %.2f deg ', ...
-                 '(required Po4/Po3 = %.3f, allowed [%.3f, %.3f])\n'], ...
-                 target, thetas_deg(j), Po4_Po3_req(j), Po4_Po3_min(j), Po4_Po3_max(j));
-    
-        % mark this theta as infeasible and skip isolator sizing
-        k(j)           = NaN;
-        M4_opt(j)      = NaN;
-        P4_opt(j)      = NaN;
-        Po4_opt(j)     = NaN;
-        Po4_Po3_opt(j) = NaN;
-        Po4_Po0_opt(j) = NaN;
-        L_H(j)         = NaN;
-        continue;
-    end
-
-    %possible pressure ratios from a shock train (this is my variable for the design space)
-    P4_P3(j,:) = linspace(1.01, P4_P3_max(j), N_iso);
-    %compute the mach number at the exit
-    gm1 = gamma-1;
-        %use formula from Lec 11 slide 23
-    f = @(M4,P4_P3) (1./P4_P3).*(M3(j)./M4).*sqrt((1+gm1/2*M3(j).^2)./(1+gm1/2*M4.^2)) ...
-                    - (((1+gamma*M3(j).^2)./P4_P3)-1)./(gamma*M4.^2);
-    M4(j,:) = arrayfun(@(p) fsolve(@(M4) f(M4,p), 0.2, ...
-                     optimoptions('fsolve','Display','off')), P4_P3(j,:));
-    %compute stagnation pressure loss across isolator
-    P4(j,:) = P3(j).*P4_P3(j,:);
-    Po3(j,:) = Po(P3(j),M3(j),gamma);
-    Po4(j,:) = Po(P4(j,:),M4(j,:),gamma);
-    Po4_Po3(j,:) = Po4(j,:)./Po3(j,:);
-    Po4_Po0(j,:) = Po4_Po3(j,:).*Po3_Po0(j);
-    %find index k such that Po4_Po3(j,k) = Po4_Po3_req(j)
-    [~, k(j)] = min(abs(Po4_Po3(j,:) - Po4_Po3_req(j)));   % closest match
-    %compute shock train length via correlation in Waltrup & Billing
-    L_H(j) = Isolator_L_margin.*sqrt(theta_H).*(50.*(P4_P3(j,k(j))-1)+170.* ...
-        (P4_P3(j,k(j))-1).^2)./((M3(j)^2-1).*Re^0.25);
-    %collect post isolator values for optimal Po ratio case at each theta
-    M4_opt(j) = M4(j,k(j));
-    P4_opt(j) = P4(j,k(j));
-    Po3_opt(j) = Po3(j,k(j));
-    Po4_opt(j) = Po4(j,k(j));
-    Po4_Po3_opt(j) = Po4_Po3(j,k(j));
-    Po4_Po0_opt(j) = Po4_Po0(j,k(j));
 end
 
 %% Plotting 
 close all;
 
 figure;
-plot(thetas*180/pi,Po4_Po0_opt,'-b','DisplayName','selected Po ratio'); hold on; 
-yline(target,':k','DisplayName','target Po ratio'); grid on;
+for n = 1:length(targets)
+    plot(thetas*180/pi,Po4_Po0_opt(n,:),'-b','DisplayName','selected Po ratio'); hold on; 
+    yline(targets(n),':k','DisplayName','target Po ratio'); 
+end
+grid on;
 xlabel('Ramp Angle, Theta [deg]');
 ylabel('Stag. Pressure Ratio Across Inlet+Isolator, Po4/Po0');
 legend('location','best')
 
 figure;
+% --- Choose 4 colors that are clearly NOT red/black ---
+clr = [0      0.4470 0.7410;  ... % blue
+       0.4660 0.6740 0.1880;  ... % green
+       0.3010 0.7450 0.9330;  ... % cyan
+       0.4940 0.1840 0.5560]; ... % purple
 plot(thetas*180/pi,Po4_Po3_min,'--r','DisplayName','min isolator Po recovery (normal shock)'); hold on;
 yline(1,'-.r','DisplayName','max isolator Po recovery (isentropic)')
-plot(thetas*180/pi,Po4_Po3_req, ':k','DisplayName','required isolator Po ratio');
-plot(thetas*180/pi,Po4_Po3_opt, '-b', 'DisplayName','selected isolator Po ratio'); grid on;
+ax = gca;
+ax.ColorOrder = clr;    % custom 4 colors
+ax.ColorOrderIndex = 1; % restart the sequence before the loop
+for n = 1:length(targets)
+    plot(thetas*180/pi,Po4_Po3_req(n,:), ':k', 'HandleVisibility', 'off');
+    plot(thetas*180/pi,Po4_Po3_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n))); grid on;
+end
+title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
 xlabel('Ramp Angle, Theta [deg]');
-ylabel('Stag. Pressure Ratio Across Isolator, Po4/Po3');
+ylabel('Stag. Pressure Ratio Across Isolator, Po3/Po2');
 legend('location','best')
+xlim([thetas_deg(1), thetas_deg(j_break)])
 
+chosen_theta = 18; %deg
+target_idx = 4; %Po3/Po0 selected as an index of the vector 'targets'
 idx = find(abs(thetas_deg - chosen_theta) == min(abs(thetas_deg - chosen_theta)));
-PlotInletGeometry(thetas(idx), beta1(idx), beta2(idx), M0, L_H(idx))
-TabulateResults(M1, M2(idx), M3(idx), M4_opt(idx), Po3_Po0(idx), Po4_Po0_opt(idx), Po4_opt(idx)/1000, CompEff(idx), thetas_deg(idx), beta1(idx)*180/pi, beta2(idx)*180/pi)
+PlotInletGeometry(thetas(idx), beta1(idx), beta2(idx), M0, L_H(target_idx,idx))
+TabulateResults(M1, M2(idx), M3(idx), M4_opt(target_idx,idx), Po3_Po0(idx), Po4_Po0_opt(target_idx,idx), Po4_opt(target_idx,idx)/1000, CompEff(idx), thetas_deg(idx), beta1(idx)*180/pi, beta2(idx)*180/pi)
 
 %% Functions
 
