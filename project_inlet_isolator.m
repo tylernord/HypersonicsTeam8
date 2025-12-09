@@ -19,7 +19,7 @@ Re = 20000;
 [T0, a0, P0, rho0, ~, ~] = atmosisa(H, 'extended', true);                  %cruise static conditions, [K, m/s, Pa, kg/m^3, ~, ~]
 Po0 = Po(P0,M0,gamma);                                                     %freestream stagnation pressure, Pa
 % target = target_Po3/Po0;                                                   %stagnation pressure ratio
-targets = [0.35, 0.4, 0.45, 0.5];                                                              % [[ Placeholder ]]
+targets = [0.41, 0.45, 0.5];                                                              % [[ Placeholder ]]
     % Values used by solver
 N_theta = 500;
 N_iso = 500;
@@ -197,8 +197,18 @@ ylabel('Stag. Pressure Ratio Across Isolator, Po3/Po2');
 legend('location','best')
 xlim([thetas_deg(1), thetas_deg(j_break)])
 
-chosen_theta = 18; %deg
-target_idx = 4; %Po3/Po0 selected as an index of the vector 'targets'
+figure;
+for n = 1:length(targets)
+    plot(thetas*180/pi,M4_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n))); hold on; grid on;
+end
+title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
+xlabel('Ramp Angle, Theta [deg]');
+ylabel('Isolator Exit Mach Number, M3');
+legend('location','best')
+xlim([thetas_deg(1), thetas_deg(j_break)])
+
+chosen_theta = 15; %deg
+target_idx = 1; %Po3/Po0 selected as an index of the vector 'targets'
 idx = find(abs(thetas_deg - chosen_theta) == min(abs(thetas_deg - chosen_theta)));
 PlotInletGeometry(thetas(idx), beta1(idx), beta2(idx), M0, L_H(target_idx,idx))
 TabulateResults(M1, M2(idx), M3(idx), M4_opt(target_idx,idx), Po3_Po0(idx), Po4_Po0_opt(target_idx,idx), Po4_opt(target_idx,idx)/1000, CompEff(idx), thetas_deg(idx), beta1(idx)*180/pi, beta2(idx)*180/pi)
