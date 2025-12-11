@@ -1,0 +1,8 @@
+problem rocket eq
+    p(bar) = 1.5645
+    o/f = 20
+reac
+    fuel = JP-10(L) t(K) = 298.150 wt% = 100.000
+    ox = Air t(K) = 1295.126 wt% = 100.000
+outp trans
+end

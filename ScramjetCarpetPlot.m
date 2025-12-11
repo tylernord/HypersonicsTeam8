@@ -9,7 +9,7 @@ clc;clear;close all; fclose all;
 %Givens/Constants
 gamma = 1.4;
 R = 287; 
-f = 0.005; %Assume very low
+%f = 0.005; %Assume very low
 % A3_A2 = 4; %Expanison Area Ratio. Constant [can change input]
 % 
 % AltRange = 20000:1000:35000; %Specify alt range [m]
@@ -59,8 +59,10 @@ f = 0.005; %Assume very low
 % end
 
 %% Carpet Plot for Scramjet
-M0 = 5:1:6;
-alt = 30000; %Altitude at 25km
+M0 = 4:1:6;
+alt = 20000; %Altitude at 25km
+A1 = 0.064516; %M^2
+g = 9.8; 
 
 %Find the corresponding altitudes and mach numbers for what you need
 T04 = [1600, 1800, 2000]; %Combustor exit temperatures [K]
@@ -73,7 +75,7 @@ nc = 0.85; %Compressor efficiency [-]
 nb = 0.98; %Combustor Efficiency [-]
 nt = 0.91; %Turbine Efficiency [-]
 nn = 0.96; %Nozzle Efficiency [-]
-ni = 0.05;
+ni = 0.10;
 
 %Isolator:
 Re_theta = 20000; %Reynolds Number
@@ -88,7 +90,7 @@ for i = 1:length(M0)
         for k = 1:length(T04)
             %Station 1: Before Inlet
             nd = 1 - (0.00689).*M0(i).^2.516;
-            [T0,a0,P0,~,~,~] = atmosisa(alt, extended=true); %Temp [K] and Pressure [Pa]
+            [T0,a0,P0,rho0,~,~] = atmosisa(alt, extended=true); %Temp [K] and Pressure [Pa]
             P01(j, k) = P0.*(1 + nd.*(gamma1 - 1)./2.*M0(i).^2).^(gamma1./(gamma1 - 1));
             T01(j, k) = T0.*(1 + (gamma1 - 1)./2.*M0(i).^2);
             u0 = M0(i).*a0;
@@ -129,7 +131,7 @@ for i = 1:length(M0)
     
                 % % Guess O/F Ratio
                 
-                OF(j, k) = 20; %Esitmated first OF Ratio Guess
+                OF(j, k, i) = 20; %Esitmated first OF Ratio Guess
                 Te = 0; %Initialize the exit temp
                 error = inf;
                 iter = 1;
@@ -142,12 +144,12 @@ for i = 1:length(M0)
                         %fprintf("CEA iteration %i] Estimated Error = %0.4f \n", iter, error);
                     end
     
-                    [gamma2, Cp2, Te, MW] = HW3CEA(P03(j, k), T03(j, k), OF(j, k));
+                    [gamma2, Cp2, Te, MW] = HW3CEA(P03(j, k), T03(j, k), OF(j, k, i));
                      
                
                      error = T04(k) - Te;
                 
-                     OF(j, k) = OF(j, k) - error*0.03;
+                     OF(j, k, i) = OF(j, k, i) - error*0.03;
                      % if iter > 40
                      %     break
                      % end
@@ -157,10 +159,10 @@ for i = 1:length(M0)
                     delete("Project1.out")
                 end
                 R2(j, k) = 8314./MW;
-                OF(j, k) = OF(j, k) + error*0.05;
+                OF(j, k, i) = OF(j, k, i) + error*0.03;
                 %fprintf("O/F Ratio for T04 %0.f and PiC %0.f is %0.4f \n", T04(j), PiC(k), OF{i}(k, j));
-                f_cea(j, k) = 1./OF(j, k);
-                f_real(j, k) = f_cea(j, k)./nb; %Get the real fuel to air ratio
+                f_cea(j, k, i) = 1./OF(j, k, i);
+                f_real(j, k, i) = f_cea(j, k, i)./nb; %Get the real fuel to air ratio
                 M4(j, k) = sqrt((M3(j, k).^2)./((T04(k)./T03(j, k)) + ((gamma2 - 1)./2.*M3(j, k).^2).*((T04(k)./T03(j, k)) - 1)));
                 A4_A3(j, k) = (M3(j, k).^2)./(M4(j, k).^2);
                 P04(j, k) = P03(j, k).*((1 + (gamma2 - 1)./2.*M4(j, k).^2)./(1 + (gamma - 1)./2.*M3(j, k).^2)).^(gamma2./(gamma2 - 1)); %Assuming constant pressure combustor
@@ -172,8 +174,18 @@ for i = 1:length(M0)
     
                 %Exit
                 u9(j, k) = sqrt(2.*Cp2.*T04(k).*nn.*(1 - ((P0./P04(j, k)).^((gamma2 - 1)./gamma2))));
-                ST(j, k) = (1 + f_real(j, k)).*u4(j, k) - u0; %Specific Thrust [Ns/kg]
-                SFC(j, k) = (f_real(j, k)./ST(j, k)).*3600; %Specific Fuel Consumption [kg/Nh]
+                ST(j, k, i) = (1 + f_real(j, k, i)).*u4(j, k) - u0; %Specific Thrust [Ns/kg]
+                SFC(j, k, i) = (f_real(j, k, i)./ST(j, k, i)).*3600; %Specific Fuel Consumption [kg/Nh]
+                if SFC(j, k, i) < 0
+                    SFC(j, k, i) = NaN;
+                end
+                if ST(j, k, i) < 0
+                    ST(j, k, i) = NaN;
+                end
+            
+                %Get Thrust
+                T(j, k, i) = ST(j, k, i).*(rho0.*u0.*A1);
+                Isp(j, k, i) = T(j, k, i)./((rho0.*u0.*A1).*f_real(j, k, i).*g);
             end
         end
     end
@@ -190,5 +202,5 @@ for i = 1:length(M0)
     end
     xlabel('Specific Thrust [Ns/kg]')
     ylabel('Specific Fuel Consumption [kg/hN]')
-    title(["Constant PIC (Blue) Against Constant T04 (Red) for M0 = ", num2str(M0(i)), " and altitude = ", num2str(alt)])
+    title(["PIC (Blue) vs.T04 (Red) for M0 = ", num2str(M0(i)), " and Alt = ", num2str(alt), "km"])
 end

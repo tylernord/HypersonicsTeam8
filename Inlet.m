@@ -5,6 +5,41 @@
 %%%%%%%%%%%%           AAE 537            %%%%%%%%%%%%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 clc;clear;close all; fclose all;
+%% Starting and Unstart Mach Number
+gamma = 1.4; %Assumed
+IsoHeights = linspace(1, 10, 100); %Array of isolator heights
+depth = 10; %inches
+H1 = linspace(5, 15, 5); %Inlet is 10 inches
+A1 = H1.*depth;
+A2 = IsoHeights.*12;
+M1_init = 0.5;
+M2_init = 1.5;
+figure (7)
+legendEntries = {};   % initialize as empty cell array
+for j = 1:length(H1)
+    for i = 1:length(A2)
+        if i == 99
+            fdsfdfs= 2;
+        end
+        [M1(j, i)] = NewtonsMethodDSolvingM1(1, M1_init, gamma, A1(j), A2(i));
+        if isnan(M1)
+            Mcrit(j, i) = NaN;
+        else
+            [Mcrit(j, i)] = NewtonsMethodForFindM2(M1(j, i), M2_init, gamma);
+        end
+       
+    end
+     h(j) = plot(Mcrit(j, :), IsoHeights(:));
+     ylabel("Isolator Heights [in]")
+     xlabel("Critical Mach Number [-]")
+     hold on
+     legendEntries{end+1} = sprintf("Isolator Height %0.2f", H1(j));
+end
+legend(h, legendEntries);
+
+
+
+
 %% Inlet Parametric Curves
 %Specifiy Ranges
 %ArrayNum = 10;
@@ -22,9 +57,9 @@ theta = zeros(1, length(M0));
 %Constants
 gamma = 1.4; %Assumed
 multiplier = 10;
-TotalLength = 5.25*multiplier;
+TotalLength = 7.3*multiplier;
 NormalizedHeight = 1*multiplier;
-hd = 0.3*multiplier; % [can change this value]
+hd = 0.67*multiplier; % [can change this value]
 
 
 %Start For Loop 
@@ -191,28 +226,4 @@ ylabel("Total Pressure Recovery of Inlet and Isolator")
 % figure(5)
 % plot(M0, P2_P1)
 
-%% Starting and Unstart Mach Number
-IsoHeights = linspace(3, 10, 100); %Array of isolator heights
-depth = 15; %inches
-H1 = 10; %Inlet is 10 inches
-A1 = H1.*depth;
-A2 = IsoHeights.*depth;
-M1_init = 0.5;
 
-for i = 1:length(A2)
-    [M1] = NewtonsMethodDSolvingM1(1, M1_init, gamma, A1, A2(i))
-end
-
-
-for i = 1:length(A2)
-    error = inf;
-    CritMachguess = 10;
-    while error > 1
-        [M1d] = NewtonsMethodForFindM2(CritMachguess, 0.5, gamma);
-        [D1d, ~, ~, ~, ~, ~] = MachNumberFunctions(M1d, gamma);
-        [D2, ~, ~, ~, ~, ~] = MachNumberFunctions(1, gamma);
-        Athroat = A1.*(D1d./D2);
-        error = Athroat - A2(i);
-        CritMachguess = CritMachguess + error.*0.5;
-    end
-end

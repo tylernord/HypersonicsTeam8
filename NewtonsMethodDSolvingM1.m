@@ -4,6 +4,8 @@ function [M1] = NewtonsMethodDSolvingM1(M2, M1_init, gamma, A1, A2)
 [D2, ~, ~, ~, ~, ~] = MachNumberFunctions(M2, gamma);
 error = 1; %Initialize error value
 i = 1; %Iteration Number
+maxTime = 5;
+tStart = tic;
 
 while abs(error) >= 1e-10
     if i == 1
@@ -11,12 +13,20 @@ while abs(error) >= 1e-10
     else
         M1_k(i) = M1_kPlus1(i-1);
     end 
-    [D_k(i), dDOverdM_k(i), ~, ~, ~, ~] = MachNumberFunction(M1_k(i), gamma);
+    [D_k(i), dDOverdM_k(i), ~, ~, ~, ~] = MachNumberFunctions(M1_k(i), gamma);
     
     M1_kPlus1(i) = M1_k(i) + ((A2.*D2)./A1 - D_k(i))./(dDOverdM_k(i)); %Calculate the next one
     
     error(i) = M1_kPlus1(i) - M1_k(i); %Calculate the error between the guess and calculated
     i = i+1;
+
+    % Time check
+    
+    if toc(tStart) > 2
+        fprintf('⛔ Stopped: Newton solver exceeded 5 seconds after\n');
+        M1 = NaN;
+        return
+    end
 
 end
 M1 = M1_kPlus1(end);
