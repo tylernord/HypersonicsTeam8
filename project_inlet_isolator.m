@@ -21,8 +21,8 @@ Po0 = Po(P0,M0,gamma);                                                     %free
 % target = target_Po3/Po0;                                                   %stagnation pressure ratio
 targets = [0.35,0.36,0.37,0.38,0.39,0.40,0.41,0.45,0.5];                                                              % [[ Placeholder ]]
     % Values used by solver
-N_theta = 500;
-N_iso = 500;
+N_theta = 100;
+N_iso = 100;
 thetas_deg = linspace(10,40,N_theta);                     % wedge/turning angle sweep [deg]
 thetas = thetas_deg*pi/180;                               % in radians
 M1 = M0;

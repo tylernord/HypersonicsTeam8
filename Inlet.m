@@ -16,14 +16,15 @@ theta = zeros(1, length(M0));
 
 
 %Specify Target Values
-hd = 0.1; % [can change this value]
+
 %T_ratio = 6; %Specify as constant [can change later]
 
 %Constants
 gamma = 1.4; %Assumed
-NormalizedLength = 4; %
-TotalLength = 8;
-NormalizedHeight = 1;
+multiplier = 10;
+TotalLength = 5.25*multiplier;
+NormalizedHeight = 1*multiplier;
+hd = 0.3*multiplier; % [can change this value]
 
 
 %Start For Loop 
@@ -34,10 +35,11 @@ error = inf;
 for i = 1:length(M0)
     thetaguess = 7;
     while abs(error) > 0.2
+        theta(i) = thetaguess;
         %[T0,~,P0,~,~,~] = atmosisa(AltRange, extended=true); %Get Static Pressure and Temp in Pa and K
         Beta1(i) = FindBeta(thetaguess, gamma, M0(i));
         width(i) = NormalizedHeight./tand(Beta1(i));
-        Cx(i) = NormalizedLength - width(i);
+        Cx(i) = (NormalizedHeight - hd)./tand(theta(i)) - width(i);
         Cx_norm(i) = Cx(i)./(Cx(i) + width(i));
         width_norm(i) = width(i)./(Cx(i) + width(i));
         l1(i) = sqrt(NormalizedHeight.^2 + width(i).^2);
@@ -58,7 +60,7 @@ for i = 1:length(M0)
             Beta2(i) = real(i);
         end
         error = Beta2_forward(i) - Beta2(i);
-        thetaguess = thetaguess - error.*0.005;
+        thetaguess = thetaguess + error.*0.005;
     end
     theta(i) = thetaguess + error.*0.005;
     M2(i) = FindMach(theta(i), Beta2(i));
@@ -86,7 +88,7 @@ for i = 1:length(M0)
     IsoL(i) = TotalLength - (NormalizedHeight - hd)./tand(theta(i));
     error = inf;
     P2_P1guess = 1;
-    while abs(error) > 1e-3
+    while abs(error) > 1e-4
         LoverD = sqrt(theta_H)./((M3(i).^2 - 1).*(Re_theta.^0.25))...
             .*(50.*((P2_P1guess) - 1) + 170.*((P2_P1guess)- 1).^2);
         error = LoverD - (IsoL(i)./hd);
@@ -115,7 +117,7 @@ for i = 1:length(M0)
     FirstShockY = [NormalizedHeight, 0];
     SecondShockX = [width(i), (NormalizedHeight - hd)./tand(theta(i))];
     SecondShockY = [0, hd];
-    adjust = 0.25;
+    adjust = 0;
 
     figure(1)
     plot(TipSurfaceX+adjust, TipSurfaceY+adjust, 'k')
@@ -132,12 +134,12 @@ for i = 1:length(M0)
     
 
 
-    xlim([0, 10])
+    xlim([0, TotalLength + 2])
     ylim([0, 1.5])
-    xlabel('Normalized X')
-    ylabel('Normalized Y')
+    xlabel('Inlet and Isolator Length [in]')
+    ylabel('Inlet and Isolator Height [in]')
     title(['Two-Turn Inlet Geometry For M0 = ' num2str(M0(i)), ' where Theta = ', num2str(theta(i))]);
-    
+    axis equal
     %pause(0.5) %Pause for 5 seconds
     hold off
 end
@@ -189,78 +191,28 @@ ylabel("Total Pressure Recovery of Inlet and Isolator")
 % figure(5)
 % plot(M0, P2_P1)
 
-%% Isolator Analysis
-% Re_theta = 20000; %Reynolds Number
-% theta_H = 0.04; %Another parameter
-% P2_P1max = 1 + (2.*gamma)./(gamma + 1).*(M3.^2 - 1); %Max Pressure Rise
-% % L = linspace(0.5, 2.5, 10);
-% % 
-% % 
-% % for i = 1:length(L)
-% %     for j = 1:length(M3)
-% %     %Find the corresponding pressure rise
-% %     error = inf;
-% %     P2_P1guess = 1;
-% %     while abs(error) > 1e-3
-% %         LoverD = sqrt(theta_H)./((M3(j).^2 - 1).*(Re_theta.^0.25))...
-% %             .*(50.*((P2_P1guess) - 1) + 170.*((P2_P1guess)- 1).^2);
-% %         error = LoverD - (L(i)./hd);
-% %         P2_P1guess = P2_P1guess - error.*0.01;
-% %     end
-% %     P2_P1iso(i, j) = P2_P1guess + error.*0.01;
-% %     P2_P1_percent(i, j) = P2_P1iso(i, j)./P2_P1max(j);
-% %     C1(i, j) = (1./(gamma.*M3(j))).*((1 + gamma.*M3(j).^2) - P2_P1iso(i, j)).*(1 + (gamma - 1)./2.*M3(j).^2).^(-0.5);
-% %     IsoExitMach(i, j) = C1(i, j)./(sqrt(1 - (gamma - 1)./2.*C1(i, j).^2));
-% %     end
-% % end
-% % max(max(P2_P1_percent));
-% 
-% %Now assume a total length of the inlet and isolator
-% TotalLength = 6;
-% for i = 1:length(M3)
-%     IsoL(i) = TotalLength - (NormalizedHeight - hd)./tand(theta(i));
-%     error = inf;
-%     P2_P1guess = 1;
-%     while abs(error) > 1e-3
-%         LoverD = sqrt(theta_H)./((M3(i).^2 - 1).*(Re_theta.^0.25))...
-%             .*(50.*((P2_P1guess) - 1) + 170.*((P2_P1guess)- 1).^2);
-%         error = LoverD - (IsoL(i)./hd);
-%         P2_P1guess = P2_P1guess - error.*0.01;
-%     end
-%     P2_P1_new(i) = P2_P1guess + error.*0.01;
-%     P2_P1_percent_new(i) = P2_P1_new(i)./P2_P1max(i);
-%     C1_new(i) = (1./(gamma.*M3(i))).*((1 + gamma.*M3(i).^2) - P2_P1_new(i)).*(1 + (gamma - 1)./2.*M3(i).^2).^(-0.5);
-%     IsoExitMach_new(i) = C1_new(i)./(sqrt(1 - (gamma - 1)./2.*C1_new(i).^2));
-% 
-%     %Plot Isolator with inlet
-%     TipSurfaceX = [0, (NormalizedHeight - hd)./tand(theta(i))];
-%     TipSurfaceY = [NormalizedHeight, hd];
-%     CxX = [width(i), TotalLength];
-%     CxY = [0, 0];
-%     InletX = [(NormalizedHeight - hd)./tand(theta(i)), TotalLength];
-%     InletY = [hd, hd];
-%     TopX = [0, TotalLength];
-%     TopY = [NormalizedHeight, NormalizedHeight];
-%     FirstShockX = [0, width(i)];
-%     FirstShockY = [NormalizedHeight, 0];
-%     SecondShockX = [width(i), (NormalizedHeight - hd)./tand(theta(i))];
-%     SecondShockY = [0, hd];
-%     adjust = 0.25;
-% 
-%     figure(5)
-%     plot(TipSurfaceX+adjust, TipSurfaceY+adjust, 'k')
-%     hold on 
-%     plot(CxX+adjust, CxY+adjust, 'k');
-%     hold on
-%     plot(InletX+adjust, InletY+adjust, 'g')
-%     hold on
-%     plot(TopX+adjust, TopY+adjust, 'k')
-%     hold on
-%     plot(FirstShockX+adjust, FirstShockY+adjust, '--r')
-%     hold on
-%     plot(SecondShockX+adjust, SecondShockY+adjust, '--r')
-%     hold off
-%     pause(0.5)
-% 
-% 
-% end
+%% Starting and Unstart Mach Number
+IsoHeights = linspace(3, 10, 100); %Array of isolator heights
+depth = 15; %inches
+H1 = 10; %Inlet is 10 inches
+A1 = H1.*depth;
+A2 = IsoHeights.*depth;
+M1_init = 0.5;
+
+for i = 1:length(A2)
+    [M1] = NewtonsMethodDSolvingM1(1, M1_init, gamma, A1, A2(i))
+end
+
+
+for i = 1:length(A2)
+    error = inf;
+    CritMachguess = 10;
+    while error > 1
+        [M1d] = NewtonsMethodForFindM2(CritMachguess, 0.5, gamma);
+        [D1d, ~, ~, ~, ~, ~] = MachNumberFunctions(M1d, gamma);
+        [D2, ~, ~, ~, ~, ~] = MachNumberFunctions(1, gamma);
+        Athroat = A1.*(D1d./D2);
+        error = Athroat - A2(i);
+        CritMachguess = CritMachguess + error.*0.5;
+    end
+end
