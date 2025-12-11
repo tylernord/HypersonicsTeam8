@@ -135,6 +135,11 @@ for i = 1:length(M0)
     IsoExitMach_new(i) = C1_new(i)./(sqrt(1 - (gamma - 1)./2.*C1_new(i).^2));
     P0ratio(i) = P2_P1_new(i).*((1 + (gamma - 1)./2.*IsoExitMach_new(i).^2)./(1 + (gamma - 1)./2.*M3(i).^2)).^(gamma./(gamma - 1));
     TotalPressRec(i) = PressureRecovery(i).*P0ratio(i);
+    CombustorInletM(i) = NewtonsMethodForFindM2(IsoExitMach_new(i), 0.5, gamma);
+    [~, ~, G4(i), ~, ~, ~] = MachNumberFunctions(IsoExitMach_new(i), gamma);
+    [~, ~, G5(i), ~, ~, ~] = MachNumberFunctions(CombustorInletM(i), gamma);
+    NSRec(i) = (G4(i)./G5(i));
+    TotalPressRec(i) = PressureRecovery(i).*P0ratio(i).*NSRec(i);
 
 
 
@@ -195,9 +200,9 @@ ylabel("Ratios [-]")
 legend("Static Press Ratio", "P0 Ratio NASA Eqn", "P0 Ratio GN/GN")
 
 figure(4)
-plot(M0, IsoExitMach_new)
+plot(M0, CombustorInletM)
 xlabel("Flight Mach Number")
-ylabel("Exit Mach of Inlet/Isolator")
+ylabel("Combustor Inlet Mach Number [Assuming NS}")
 
 figure(5)
 plot(M0, P2_P1_percent_new)

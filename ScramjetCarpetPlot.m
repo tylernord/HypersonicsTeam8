@@ -185,7 +185,9 @@ for i = 1:length(M0)
             
                 %Get Thrust
                 T(j, k, i) = ST(j, k, i).*(rho0.*u0.*A1);
-                Isp(j, k, i) = T(j, k, i)./((rho0.*u0.*A1).*f_real(j, k, i).*g);
+                mdotf(j, k, i) = (rho0.*u0.*A1).*f_real(j, k, i);
+                Isp(j, k, i) = T(j, k, i)./(mdotf(j, k, i).*g);
+                %Find range equation
             end
         end
     end
