@@ -56,10 +56,10 @@ theta = zeros(1, length(M0));
 
 %Constants
 gamma = 1.4; %Assumed
-multiplier = 1;
-TotalLength = 4*multiplier;
+multiplier = 10;
+TotalLength = 3.6*multiplier;
 NormalizedHeight = 1*multiplier;
-hd = 0.25*multiplier; % [can change this value]
+hd = 0.21*multiplier; % [can change this value]
 
 
 %Start For Loop 

@@ -60,7 +60,7 @@ R = 287;
 
 %% Carpet Plot for Scramjet
 M0 = 4:1:6;
-alt = 20000; %Altitude at 25km
+alt = 35000; %Altitude at 25km
 A1 = 0.064516; %M^2
 g = 9.8; 
 
@@ -176,12 +176,12 @@ for i = 1:length(M0)
                 u9(j, k) = sqrt(2.*Cp2.*T04(k).*nn.*(1 - ((P0./P04(j, k)).^((gamma2 - 1)./gamma2))));
                 ST(j, k, i) = (1 + f_real(j, k, i)).*u4(j, k) - u0; %Specific Thrust [Ns/kg]
                 SFC(j, k, i) = (f_real(j, k, i)./ST(j, k, i)).*3600; %Specific Fuel Consumption [kg/Nh]
-                if SFC(j, k, i) < 0
-                    SFC(j, k, i) = NaN;
-                end
-                if ST(j, k, i) < 0
-                    ST(j, k, i) = NaN;
-                end
+                % if SFC(j, k, i) < 0
+                %     SFC(j, k, i) = NaN;
+                % end
+                % if ST(j, k, i) < 0
+                %     ST(j, k, i) = NaN;
+                % end
             
                 %Get Thrust
                 T(j, k, i) = ST(j, k, i).*(rho0.*u0.*A1);
@@ -195,11 +195,11 @@ for i = 1:length(M0)
     figure(i)
     hold on;
     for n = 1:size(ST, 1)
-        plot(ST(n, :), SFC(n, :), 'b-o');  % Blue lines across rows PIc
+        plot(ST(n, :, i), SFC(n, :, i), 'b-o');  % Blue lines across rows PIc
         hold on
     end
     for m = 1:size(ST, 2)
-        plot(ST(:, m), SFC(:, m), 'r-o');  % Red lines down columns TO4
+        plot(ST(:, m, i), SFC(:, m, i), 'r-o');  % Red lines down columns TO4
         hold on
     end
     xlabel('Specific Thrust [Ns/kg]')
