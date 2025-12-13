@@ -7,11 +7,11 @@
 clc;clear;close all; fclose all;
 %% Starting and Unstart Mach Number
 gamma = 1.4; %Assumed
-IsoHeights = linspace(1, 10, 100); %Array of isolator heights
+IsoHeights = linspace(1, 10, 1000); %Array of isolator heights
 depth = 10; %inches
 H1 = linspace(5, 15, 5); %Inlet is 10 inches
 A1 = H1.*depth;
-A2 = IsoHeights.*12;
+A2 = IsoHeights.*depth;
 M1_init = 0.5;
 M2_init = 1.5;
 figure (7)
@@ -33,7 +33,7 @@ for j = 1:length(H1)
      ylabel("Isolator Heights [in]")
      xlabel("Critical Mach Number [-]")
      hold on
-     legendEntries{end+1} = sprintf("Isolator Height %0.2f", H1(j));
+     legendEntries{end+1} = sprintf("Inlet Height %0.2f", H1(j));
 end
 legend(h, legendEntries);
 
@@ -43,7 +43,7 @@ legend(h, legendEntries);
 %% Inlet Parametric Curves
 %Specifiy Ranges
 %ArrayNum = 10;
-M0 = linspace(3.5, 4.5, 20); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
+M0 = linspace(3.5, 4.5, 100); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
 %theta = linspace(7, 15, ArrayNum); %Specify theta [can change]
 AltRange = linspace(20000, 35000, 100); %Specify alt range [m]
 theta = zeros(1, length(M0));
@@ -56,10 +56,10 @@ theta = zeros(1, length(M0));
 
 %Constants
 gamma = 1.4; %Assumed
-multiplier = 10;
-TotalLength = 7.3*multiplier;
+multiplier = 1;
+TotalLength = 4*multiplier;
 NormalizedHeight = 1*multiplier;
-hd = 0.67*multiplier; % [can change this value]
+hd = 0.25*multiplier; % [can change this value]
 
 
 %Start For Loop 
@@ -95,9 +95,9 @@ for i = 1:length(M0)
             Beta2(i) = real(i);
         end
         error = Beta2_forward(i) - Beta2(i);
-        thetaguess = thetaguess + error.*0.005;
+        thetaguess = thetaguess + error.*0.01;
     end
-    theta(i) = thetaguess + error.*0.005;
+    theta(i) = thetaguess - error.*0.01;
     M2(i) = FindMach(theta(i), Beta2(i));
     M2N1(i) = M2(i).*sind(Beta2(i));
     M3N(i) = NewtonsMethodForFindM2(M2N1(i), 0.5, gamma);
@@ -202,7 +202,7 @@ legend("Static Press Ratio", "P0 Ratio NASA Eqn", "P0 Ratio GN/GN")
 figure(4)
 plot(M0, CombustorInletM)
 xlabel("Flight Mach Number")
-ylabel("Combustor Inlet Mach Number [Assuming NS}")
+ylabel("Combustor Inlet Mach Number [Assuming NS]")
 
 figure(5)
 plot(M0, P2_P1_percent_new)
