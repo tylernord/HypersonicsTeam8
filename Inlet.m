@@ -7,7 +7,7 @@
 clc;clear;close all; fclose all;
 %% Starting and Unstart Mach Number
 gamma = 1.4; %Assumed
-IsoHeights = linspace(1, 10, 1000); %Array of isolator heights
+IsoHeights = linspace(1, 10, 100); %Array of isolator heights
 depth = 10; %inches
 H1 = linspace(5, 15, 5); %Inlet is 10 inches
 A1 = H1.*depth;
@@ -36,6 +36,9 @@ for j = 1:length(H1)
      legendEntries{end+1} = sprintf("Inlet Height %0.2f", H1(j));
 end
 legend(h, legendEntries);
+
+
+
 
 
 
