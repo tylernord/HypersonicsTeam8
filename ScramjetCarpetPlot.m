@@ -73,9 +73,15 @@ R = 8.3145; %Universal Gas Constant
 Cp1 = (gamma1.*(R./MW))./(gamma1 - 1);
 nc = 0.85; %Compressor efficiency [-]
 nb = 0.98; %Combustor Efficiency [-]
-nt = 0.91; %Turbine Efficiency [-]
+%nt = 0.91; %Turbine Efficiency [-]
 nn = 0.96; %Nozzle Efficiency [-]
-ni = 0.10;
+ni = 0.1;
+
+L_D = [9, 8.5, 8];
+%n0 = 65; %Overall Efficiency
+massratio = 6; 
+LHV = 43e6; %Lower heating value of JP10
+
 
 %Isolator:
 Re_theta = 20000; %Reynolds Number
@@ -176,20 +182,31 @@ for i = 1:length(M0)
                 u9(j, k) = sqrt(2.*Cp2.*T04(k).*nn.*(1 - ((P0./P04(j, k)).^((gamma2 - 1)./gamma2))));
                 ST(j, k, i) = (1 + f_real(j, k, i)).*u4(j, k) - u0; %Specific Thrust [Ns/kg]
                 SFC(j, k, i) = (f_real(j, k, i)./ST(j, k, i)).*3600; %Specific Fuel Consumption [kg/Nh]
-                % if SFC(j, k, i) < 0
-                %     SFC(j, k, i) = NaN;
-                % end
-                % if ST(j, k, i) < 0
-                %     ST(j, k, i) = NaN;
-                % end
+                if SFC(j, k, i) < 0
+                    SFC(j, k, i) = NaN;
+                end
+                if ST(j, k, i) < 0
+                    ST(j, k, i) = NaN;
+                end
             
                 %Get Thrust
                 T(j, k, i) = ST(j, k, i).*(rho0.*u0.*A1);
                 mdotf(j, k, i) = (rho0.*u0.*A1).*f_real(j, k, i);
                 Isp(j, k, i) = T(j, k, i)./(mdotf(j, k, i).*g);
-                %Find range equation
+                %Find range equaiton
+                
+             
+                v(j, k, i) = (u0./u4(j, k));
+                np(j, k, i) = (2.*v(j, k, i).*(f_real(j, k, i) + 1 - v(j, k, i)))./...
+                    (2.*v(j, k, i).*(f_real(j, k, i) + 1 - v(j, k, i)) + (f_real(j, k, i) + 1).*(1 - v(j, k, i)).^2);
+                nt(j, k, i) = (f_real(j, k, i).*(0.5 + (v(j, k, i).^2)./2) + 0.5 - (v(j, k, i).^2)./2)./...
+                    (f_real(j, k, i).*v(j, k, i).^2.*(LHV./(u0.^2)));
+                %n0(j, k, i) = np(j, k, i).*(nt(j, k, i));
+                n0(j, k, i) = u0./(SFC(j, k, i).*LHV);
+                Range(j, k, i) = n0(j, k, i).*LHV.*L_D(i).*(1./g).*log(massratio);
             end
         end
+        
     end
 
     figure(i)
@@ -199,10 +216,10 @@ for i = 1:length(M0)
         hold on
     end
     for m = 1:size(ST, 2)
-        plot(ST(:, m, i), SFC(:, m, i), 'r-o');  % Red lines down columns TO4
+        plot(ST(:, m, i), SFC(:, m, i), 'r--o');  % Red lines down columns TO4
         hold on
     end
     xlabel('Specific Thrust [Ns/kg]')
     ylabel('Specific Fuel Consumption [kg/hN]')
-    title(["PIC (Blue) vs.T04 (Red) for M0 = ", num2str(M0(i)), " and Alt = ", num2str(alt), "km"])
+    title(["M0 = ", M0(i), " and Alt = ", alt, "km"])
 end
