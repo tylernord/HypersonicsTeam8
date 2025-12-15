@@ -60,7 +60,7 @@ R = 287;
 
 %% Carpet Plot for Scramjet
 M0 = 4:1:6;
-alt = 35000; %Altitude at 25km
+alt = 20000; %Altitude at 25km
 A1 = 0.064516; %M^2
 g = 9.8; 
 
@@ -222,4 +222,5 @@ for i = 1:length(M0)
     xlabel('Specific Thrust [Ns/kg]')
     ylabel('Specific Fuel Consumption [kg/hN]')
     title(["M0 = ", M0(i), " and Alt = ", alt, "km"])
+    grid on
 end

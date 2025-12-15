@@ -7,9 +7,9 @@
 clc;clear;close all; fclose all;
 %% Starting and Unstart Mach Number
 gamma = 1.4; %Assumed
-IsoHeights = 2.1;%linspace(1, 10, 100); %Array of isolator heights
+IsoHeights = linspace(1, 10, 100); %Array of isolator heights
 depth = 10; %inches
-H1 = 10;%linspace(5, 15, 5); %Inlet is 10 inches
+H1 =  3.9671;%linspace(3, 15, 5); %Inlet is 10 inches
 A1 = H1.*depth;
 A2 = IsoHeights.*depth;
 M1_init = 0.5;
@@ -194,8 +194,10 @@ for i = 1:length(M0)
    
     TipSurfaceX = [0, (NormalizedHeight - hd)./tand(theta(i))];
     TipSurfaceY = [NormalizedHeight, hd];
-    CxX = [width(i), TotalLength];
-    CxY = [0, 0];
+    CxX = [width(i), (NormalizedHeight - hd)./tand(theta(i))];
+    CxY = [0, -(2.7 - hd)];
+    BottomX = [(NormalizedHeight - hd)./tand(theta(i)), TotalLength];
+    BottomY = [-(2.7 - hd), -(2.7 - hd)];
     InletX = [(NormalizedHeight - hd)./tand(theta(i)), TotalLength];
     InletY = [hd, hd];
     TopX = [0, TotalLength];
@@ -207,17 +209,19 @@ for i = 1:length(M0)
     adjust = 0;
 
     figure(1)
-    plot(TipSurfaceX+adjust, TipSurfaceY+adjust, 'k')
+    plot(TipSurfaceX, TipSurfaceY+adjust, 'k')
     hold on 
-    plot(CxX+adjust, CxY+adjust, 'k');
+    plot(CxX, CxY+adjust, 'k');
     hold on
-    plot(InletX+adjust, InletY+adjust, 'g')
+    plot(BottomX, BottomY+adjust, 'k');
     hold on
-    plot(TopX+adjust, TopY+adjust, 'k')
+    plot(InletX, InletY+adjust, 'g')
     hold on
-    plot(FirstShockX+adjust, FirstShockY+adjust, '--r')
+    plot(TopX, TopY+adjust, 'k')
     hold on
-    plot(SecondShockX+adjust, SecondShockY+adjust, '--r')
+    plot(FirstShockX, FirstShockY+adjust, '--r')
+    hold on
+    plot(SecondShockX, SecondShockY+adjust, '--r')
     
 
 
