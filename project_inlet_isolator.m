@@ -19,10 +19,11 @@ Re = 20000;
 [T0, a0, P0, rho0, ~, ~] = atmosisa(H, 'extended', true);                  %cruise static conditions, [K, m/s, Pa, kg/m^3, ~, ~]
 Po0 = Po(P0,M0,gamma);                                                     %freestream stagnation pressure, Pa
 % target = target_Po3/Po0;                                                   %stagnation pressure ratio
-targets = [0.35,0.36,0.37,0.38,0.39,0.40,0.41,0.45,0.5];                                                              % [[ Placeholder ]]
+targets = [0.35,0.36,0.37,0.38,0.39,0.40,0.41,0.42, 0.43, 0.44,0.45];                                                              % [[ Placeholder ]]
+% targets = [0.45,0.475,0.5,0.525,0.55];
     % Values used by solver
-N_theta = 100;
-N_iso = 100;
+N_theta = 500;
+N_iso = 500;
 thetas_deg = linspace(10,40,N_theta);                     % wedge/turning angle sweep [deg]
 thetas = thetas_deg*pi/180;                               % in radians
 M1 = M0;
@@ -197,9 +198,17 @@ ylabel('Stag. Pressure Ratio Across Isolator, Po3/Po2');
 legend('location','best')
 xlim([thetas_deg(1), thetas_deg(j_break)])
 
+styles  = {'-','--',':','-.'};                         % 4 line types
+markers = {'o','s','^','d','v','>','<','p','h','x','+'}; % 11 markers
+markEvery = 25;  % <- increase if you have lots of points (e.g., 50 or 100)
 figure;
 for n = 1:length(targets)
-    plot(thetas*180/pi,M4_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n))); hold on; grid on;
+    plot(thetas*180/pi,M4_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n)),...
+        'LineStyle', styles{mod(n-1,numel(styles))+1}, ...
+        'Marker', markers{n}, ...
+        'MarkerIndices', 1:markEvery:numel(thetas), ...
+        'LineWidth', 1.25, ...
+        'MarkerSize', 5); hold on; grid on;
 end
 title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
 xlabel('Ramp Angle, Theta [deg]');
@@ -209,7 +218,12 @@ xlim([thetas_deg(1), thetas_deg(j_break)])
 
 figure;
 for n = 1:length(targets)
-    plot(thetas*180/pi,L_H(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n))); hold on; grid on;
+    plot(thetas*180/pi,L_H(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n)),...
+        'LineStyle', styles{mod(n-1,numel(styles))+1}, ...
+        'Marker', markers{n}, ...
+        'MarkerIndices', 1:markEvery:numel(thetas), ...
+        'LineWidth', 1.25, ...
+        'MarkerSize', 5); hold on; grid on;
 end
 title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
 xlabel('Ramp Angle, Theta [deg]');
