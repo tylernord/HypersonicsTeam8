@@ -7,9 +7,9 @@
 clc;clear;close all; fclose all;
 %% Starting and Unstart Mach Number
 gamma = 1.4; %Assumed
-IsoHeights = linspace(1, 10, 100); %Array of isolator heights
+IsoHeights = 2.1;%linspace(1, 10, 100); %Array of isolator heights
 depth = 10; %inches
-H1 = linspace(5, 15, 5); %Inlet is 10 inches
+H1 = 10;%linspace(5, 15, 5); %Inlet is 10 inches
 A1 = H1.*depth;
 A2 = IsoHeights.*depth;
 M1_init = 0.5;
@@ -37,7 +37,18 @@ for j = 1:length(H1)
 end
 legend(h, legendEntries);
 
+Mstart = 4;
 
+[Mnext] = NewtonsMethodForFindM2(Mstart, 0.5, gamma);
+[Dnext, ~, Gnext, ~, ~, ~] = MachNumberFunctions(Mnext, gamma);
+[Dthroat, ~, ~, ~, ~, ~] = MachNumberFunctions(1, gamma);
+Athroat = (H1.*depth.*Dnext)./Dthroat;
+
+[T0,a0,P0,rho0,~,~] = atmosisa(25000, extended=true);
+mdot = rho0.*(Mstart.*a0).*(A1./1550); %This is the old mdot when they were equal
+mdot_delta = ((Athroat - A2)./A2).*mdot;
+mdot_needed = (Athroat./A2).*mdot;
+AreaofBleedDoors = mdot_delta./(rho0.*Mstart.*a0);
 
 
 
@@ -46,7 +57,7 @@ legend(h, legendEntries);
 %% Inlet Parametric Curves
 %Specifiy Ranges
 %ArrayNum = 10;
-M0 = linspace(3.5, 4.5, 100); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
+M0 = linspace(4, 4.5, 100); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
 %theta = linspace(7, 15, ArrayNum); %Specify theta [can change]
 AltRange = linspace(20000, 35000, 100); %Specify alt range [m]
 theta = zeros(1, length(M0));
@@ -117,6 +128,39 @@ for i = 1:length(M0)
     [P2_P1(i)] = ObliqueShockPRatio(M0(i), Beta1(i), gamma);
     [P3_P2(i)] = ObliqueShockPRatio(M2(i), Beta2(i), gamma);
     P3_P1(i) = P2_P1(i).*P3_P2(i);
+
+    %For loop for normal shock
+    
+    % b = 1;
+    % beta = Beta2(i) - theta(i);
+    % while beta < 90
+    %     if b == 1
+    %         M2 = M3(i);
+    %         beta = Beta2(i);
+    %     else
+    %         M2 = M4(b - 1);
+    %         beta = SolveBetaWeak(0, M2);
+    %         if isnan(beta)
+    %             InletExitMach(i) = NewtonsMethodForFindM2(M2, 0.5, gamma);
+    %             [~, ~, G4N, ~, ~, ~] = MachNumberFunctions(M2, gamma);
+    %             [~, ~, G5N, ~, ~, ~] = MachNumberFunctions(InletExitMach(i), gamma);
+    %             InletPressureRecovery(i) = (G4N./G5N);
+    %             break
+    %         end
+    % 
+    %     end
+    %     M2N1 = M2.*sind(beta);
+    %     M3N = NewtonsMethodForFindM2(M2N1, 0.5, gamma);
+    %     M4(b) = M3N./sind(beta - theta(i));
+    %     b = b+1;
+    % end
+    % TotalPressRec(i) = PressureRecovery(i).*InletPressureRecovery(i);
+
+    % CombustorInletM(i) = NewtonsMethodForFindM2(M3(i), 0.5, gamma);
+    % [~, ~, G4(i), ~, ~, ~] = MachNumberFunctions(M3(i), gamma);
+    % [~, ~, G5(i), ~, ~, ~] = MachNumberFunctions(CombustorInletM(i), gamma);
+    % NSRec(i) = (G4(i)./G5(i));
+    % TotalPressRec(i) = PressureRecovery(i).*NSRec(i);
 
     %Isolator:
     Re_theta = 20000; %Reynolds Number
@@ -207,10 +251,10 @@ plot(M0, CombustorInletM)
 xlabel("Flight Mach Number")
 ylabel("Combustor Inlet Mach Number [Assuming NS]")
 
-figure(5)
-plot(M0, P2_P1_percent_new)
-xlabel("Flight Mach Number")
-ylabel("% of Max Isolator P2/P1")
+% figure(5)
+% plot(M0, P2_P1_percent_new)
+% xlabel("Flight Mach Number")
+% ylabel("% of Max Isolator P2/P1")
 
 figure(6)
 plot(M0, TotalPressRec)
