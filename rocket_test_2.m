@@ -4,6 +4,11 @@
 
 clear; clc; close all;
 
+%% Rugved look here
+gamma_t_deg = 3;                               % [deg] FIXED target angle
+M_target = 4;
+H_target = 20000; %m
+
 %% ---------------- constants/requirements ----------------
 g0 = 9.80665;                                 % [m/s^2]
 m_pl = 158.757;                                   % [kg] payload mass
@@ -34,7 +39,6 @@ Hs          = 7200;                             % [m] scale height for rho-avera
 k_drag_coast= 1.3;                              % [-] conservatism
 
 % Target flight-path angle at the target point
-gamma_t_deg = 10;                               % [deg] FIXED target angle
 gamma_t = deg2rad(gamma_t_deg);
 
 % Choose where burnout happens as a fraction of target altitude
@@ -163,8 +167,8 @@ axis xy; xlabel("Target Mach # at H_t"); ylabel("Target Altitude H_t [km]");
 title('Coast time required');
 
 %% ---------------- report one design point ----------------
-iM = find(abs(M-4) == min(abs(M-4)),1);
-jH = find(abs(H-25000) == min(abs(H-25000)),1);
+iM = find(abs(M-M_target) == min(abs(M-M_target)),1);
+jH = find(abs(H-H_target) == min(abs(H-H_target)),1);
 
 fprintf('\n--- Example point ---\n');
 fprintf('Target: H=%.0f m, M=%.2f, gamma_t=%.1f deg\n', H(jH), M(iM), gamma_t_deg);
