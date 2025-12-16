@@ -172,9 +172,10 @@ jH = find(abs(H-H_target) == min(abs(H-H_target)),1);
 
 fprintf('\n--- Example point ---\n');
 fprintf('Target: H=%.0f m, M=%.2f, gamma_t=%.1f deg\n', H(jH), M(iM), gamma_t_deg);
-fprintf('Propellant mass      : %.2f kg\n', m_prop(jH,iM));
-fprintf('Inert mass           : %.2f kg\n', m_prop(jH,iM)*(1-lambda)/lambda);
-fprintf('GLOW:                : %.2f kg\n', m_pl+m_prop(jH,iM)/lambda);
+fprintf('Propellant mass                   : %.2f kg\n', m_prop(jH,iM));
+fprintf('Inert mass                        : %.2f kg\n', m_prop(jH,iM)*(1-lambda)/lambda);
+fprintf('Stage mass (prop+inert)           : %.2f kg\n', m_prop(jH,iM)/lambda);
+fprintf('GLOW                              : %.2f kg\n', m_pl+m_prop(jH,iM)/lambda);
 fprintf('Design ΔV            : %.1f m/s\n', dV_design(jH,iM));
 fprintf('Burn drag ΔV         : %.1f m/s\n', dV_drag_b(jH,iM));
 fprintf('Coast drag ΔV        : %.1f m/s\n', dV_drag_c(jH,iM));

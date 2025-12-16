@@ -167,6 +167,8 @@ end
 %% Plotting 
 close all;
 
+load('InletIsolatorWorkspace.mat')
+
 figure;
 for n = 1:length(targets)
     plot(thetas*180/pi,Po4_Po0_opt(n,:),'-b','DisplayName','selected Po ratio'); hold on; 
@@ -178,16 +180,8 @@ ylabel('Stag. Pressure Ratio Across Inlet+Isolator, Po4/Po0');
 legend('location','best')
 
 figure;
-% % --- Choose 4 colors that are clearly NOT red/black ---
-% clr = [0      0.4470 0.7410;  ... % blue
-%        0.4660 0.6740 0.1880;  ... % green
-%        0.3010 0.7450 0.9330;  ... % cyan
-%        0.4940 0.1840 0.5560]; ... % purple
 plot(thetas*180/pi,Po4_Po3_min,'--r','DisplayName','min isolator Po recovery (normal shock)'); hold on;
 yline(1,'-.r','DisplayName','max isolator Po recovery (isentropic)')
-% ax = gca;
-% ax.ColorOrder = clr;    % custom 4 colors
-% ax.ColorOrderIndex = 1; % restart the sequence before the loop
 for n = 1:length(targets)
     plot(thetas*180/pi,Po4_Po3_req(n,:), ':k', 'HandleVisibility', 'off');
     plot(thetas*180/pi,Po4_Po3_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n))); grid on;
@@ -198,10 +192,17 @@ ylabel('Stag. Pressure Ratio Across Isolator, Po3/Po2');
 legend('location','best')
 xlim([thetas_deg(1), thetas_deg(j_break)])
 
+chosen_theta = 18.5; %deg
+target_idx = 5; %Po3/Po0 selected as an index of the vector 'targets'
+idx = find(abs(thetas_deg - chosen_theta) == min(abs(thetas_deg - chosen_theta)));
+PlotInletGeometry(thetas(idx), beta1(idx), beta2(idx), M0, L_H(target_idx,idx))
+TabulateResults(M1, M2(idx), M3(idx), M4_opt(target_idx,idx), Po3_Po0(idx), Po4_Po0_opt(target_idx,idx), Po4_opt(target_idx,idx)/1000, CompEff(idx), thetas_deg(idx), beta1(idx)*180/pi, beta2(idx)*180/pi)
+
 styles  = {'-','--',':','-.'};                         % 4 line types
 markers = {'o','s','^','d','v','>','<','p','h','x','+'}; % 11 markers
 markEvery = 25;  % <- increase if you have lots of points (e.g., 50 or 100)
 figure;
+subplot(1,2,1)
 for n = 1:length(targets)
     plot(thetas*180/pi,M4_opt(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n)),...
         'LineStyle', styles{mod(n-1,numel(styles))+1}, ...
@@ -210,13 +211,18 @@ for n = 1:length(targets)
         'LineWidth', 1.25, ...
         'MarkerSize', 5); hold on; grid on;
 end
-title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
+plot(thetas(idx)*180/pi, M4_opt(target_idx,idx), 'o', ...
+    'MarkerSize', 10, ...
+    'MarkerFaceColor','k', ...
+    'MarkerEdgeColor','w', ...
+    'LineWidth', 2.5, ...
+    'DisplayName','Design Point');
+% title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
 xlabel('Ramp Angle, Theta [deg]');
 ylabel('Isolator Exit Mach Number, M3');
-legend('location','best')
 xlim([thetas_deg(1), thetas_deg(j_break)])
 
-figure;
+subplot(1,2,2)
 for n = 1:length(targets)
     plot(thetas*180/pi,L_H(n,:), '-', 'DisplayName', compose("Po3/Po0 = %.3f", targets(n)),...
         'LineStyle', styles{mod(n-1,numel(styles))+1}, ...
@@ -225,17 +231,16 @@ for n = 1:length(targets)
         'LineWidth', 1.25, ...
         'MarkerSize', 5); hold on; grid on;
 end
-title(compose("Isolator Design Possibilities\n2-turn inlet @ M_{0} = %.2f", M1))
+plot(thetas(idx)*180/pi, L_H(target_idx,idx), 'o', ...
+    'MarkerSize', 10, ...
+    'MarkerFaceColor','k', ...
+    'MarkerEdgeColor','w', ...
+    'LineWidth', 2.5, ...
+    'DisplayName','Design Point');
 xlabel('Ramp Angle, Theta [deg]');
 ylabel('Isolator L/D');
 legend('location','best')
 xlim([thetas_deg(1), thetas_deg(j_break)])
-
-chosen_theta = 18.5; %deg
-target_idx = 5; %Po3/Po0 selected as an index of the vector 'targets'
-idx = find(abs(thetas_deg - chosen_theta) == min(abs(thetas_deg - chosen_theta)));
-PlotInletGeometry(thetas(idx), beta1(idx), beta2(idx), M0, L_H(target_idx,idx))
-TabulateResults(M1, M2(idx), M3(idx), M4_opt(target_idx,idx), Po3_Po0(idx), Po4_Po0_opt(target_idx,idx), Po4_opt(target_idx,idx)/1000, CompEff(idx), thetas_deg(idx), beta1(idx)*180/pi, beta2(idx)*180/pi)
 
 %% Functions
 
