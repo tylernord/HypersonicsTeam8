@@ -9,7 +9,7 @@ clc;clear;close all; fclose all;
 gamma = 1.4; %Assumed
 IsoHeights = linspace(1, 10, 100); %Array of isolator heights
 depth = 10; %inches
-H1 =  3.9671;%linspace(3, 15, 5); %Inlet is 10 inches
+H1 =  [3, 5, 7, 10];%linspace(3, 15, 5); %Inlet is 10 inches
 A1 = H1.*depth;
 A2 = IsoHeights.*depth;
 M1_init = 0.5;
@@ -33,9 +33,10 @@ for j = 1:length(H1)
      ylabel("Isolator Heights [in]")
      xlabel("Critical Mach Number [-]")
      hold on
-     legendEntries{end+1} = sprintf("Inlet Height %0.2f", H1(j));
+     legendEntries{end+1} = sprintf("Capture Height %0.2f", H1(j));
 end
 legend(h, legendEntries);
+grid on
 
 Mstart = 4;
 
@@ -57,7 +58,7 @@ AreaofBleedDoors = mdot_delta./(rho0.*Mstart.*a0);
 %% Inlet Parametric Curves
 %Specifiy Ranges
 %ArrayNum = 10;
-M0 = linspace(4, 4.5, 100); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
+M0 = 4.5;%linspace(4, 4.5, 100); %linspace(4, 5.5, ArrayNum); %Specify Inlet Mach Array
 %theta = linspace(7, 15, ArrayNum); %Specify theta [can change]
 AltRange = linspace(20000, 35000, 100); %Specify alt range [m]
 theta = zeros(1, length(M0));
@@ -206,7 +207,7 @@ for i = 1:length(M0)
     FirstShockY = [NormalizedHeight, 0];
     SecondShockX = [width(i), (NormalizedHeight - hd)./tand(theta(i))];
     SecondShockY = [0, hd];
-    adjust = 0;
+    adjust = 0.6;
 
     figure(1)
     plot(TipSurfaceX, TipSurfaceY+adjust, 'k')
